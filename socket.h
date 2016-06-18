@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <zmq.h>
+#include <cassert>
 
 #include "err.h"
 
@@ -16,12 +17,24 @@ Socket(void *ctx, int type, std::string addr_) : addr(addr_) {
   sock = zmq_socket(ctx, type);
   if (!sock)
     throw Err("Couldnt create socket");
-  if (zmq_bind(sock, addr.c_str()) == -1)
-    throw Err("couldnt connect");
+
+  if (type == ZMQ_REP) {
+    if (zmq_bind(sock, addr.c_str()) == -1)
+      throw Err("couldnt connect");
+  } else {
+    if (zmq_connect(sock, addr.c_str()) == -1)
+      throw Err("couldnt connect");
+  }
 }
 
   void send(DataVec &data) {
-    
+    zmq_msg_t *msg = new zmq_msg_t;
+    int rc = zmq_msg_init_size (msg, data.size());
+    assert(rc != -1);
+    std::copy(&data[0], &data[data.size()], (char*)zmq_msg_data(msg));
+
+    rc = zmq_msg_send(msg, sock, 0);//ZMQ_DONTWAIT for polling
+    assert (rc != -1);
   }
 
   DataVec recv() {
