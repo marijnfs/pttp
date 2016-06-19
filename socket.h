@@ -14,7 +14,7 @@ typedef std::vector<uint8_t> DataVec;
 
 struct Socket {
 
-Socket(void *ctx, int type, std::string addr_) : addr(addr_) {
+Socket(void *ctx, int type_, std::string addr_) : type(type_), addr(addr_) {
   sock = zmq_socket(ctx, type);
   if (!sock)
     throw Err("Couldnt create socket");
@@ -57,10 +57,12 @@ Socket(void *ctx, int type, std::string addr_) : addr(addr_) {
   }
 
   void subscribe(std::string pref) {
+    assert(type = ZMQ_SUB);
     zmq_setsockopt (sock, ZMQ_SUBSCRIBE, pref.c_str(), pref.size());
   }
   
   std::string addr;
+  int type;
   void *sock;
 };
 
