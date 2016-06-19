@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <zmq.h>
 #include <cassert>
+#include <iostream>
 
 #include "err.h"
 
@@ -18,10 +19,12 @@ Socket(void *ctx, int type, std::string addr_) : addr(addr_) {
   if (!sock)
     throw Err("Couldnt create socket");
 
-  if (type == ZMQ_REP) {
+  if (type == ZMQ_REP || type == ZMQ_PUB) {
+    std::cout << "binding to " << addr << std::endl;
     if (zmq_bind(sock, addr.c_str()) == -1)
       throw Err("couldnt connect");
   } else {
+    std::cout << "connecting to " << addr << std::endl;
     if (zmq_connect(sock, addr.c_str()) == -1)
       throw Err("couldnt connect");
   }
@@ -53,6 +56,10 @@ Socket(void *ctx, int type, std::string addr_) : addr(addr_) {
     return data;
   }
 
+  void subscribe(std::string pref) {
+    zmq_setsockopt (sock, ZMQ_SUBSCRIBE, pref.c_str(), pref.size());
+  }
+  
   std::string addr;
   void *sock;
 };
