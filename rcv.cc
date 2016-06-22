@@ -6,6 +6,7 @@
 
 #include "err.h"
 #include "socket.h"
+#include "curve.h"
 
 using namespace std;
 

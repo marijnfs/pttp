@@ -8,9 +8,8 @@
 #include <cassert>
 #include <iostream>
 
+#include "type.h"
 #include "err.h"
-
-typedef std::vector<uint8_t> DataVec;
 
 struct Socket {
 
@@ -30,7 +29,7 @@ Socket(void *ctx, int type_, std::string addr_) : type(type_), addr(addr_) {
   }
 }
 
-  void send(DataVec &data) {
+  void send(Bytes &data) {
     zmq_msg_t *msg = new zmq_msg_t;
     int rc = zmq_msg_init_size (msg, data.size());
     assert(rc != -1);
@@ -40,7 +39,7 @@ Socket(void *ctx, int type_, std::string addr_) : type(type_), addr(addr_) {
     assert (rc != -1);
   }
 
-  DataVec recv() {
+  Bytes recv() {
     zmq_msg_t *msg = new zmq_msg_t;
     int rc = zmq_msg_init (msg);
     if (rc == -1)
@@ -50,7 +49,7 @@ Socket(void *ctx, int type_, std::string addr_) : type(type_), addr(addr_) {
     if (rc == -1)
       throw Err("recieving failed failed");
 
-    DataVec data(rc);
+    Bytes data(rc);
     char *data_ptr = (char*)zmq_msg_data(msg);
     std::copy(data_ptr, data_ptr + rc, &data[0]);
     return data;
