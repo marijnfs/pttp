@@ -1,5 +1,7 @@
 #include "curve.h"
 
+using namespace std;
+
 Curve *Curve::s_curve = 0;
 
 
@@ -176,8 +178,8 @@ bool SignedMessage::verify(PublicSignKey &pub) {
 			  &pub[0]) == 0;
 }
 
-std::ostream &operator<<(std::ostream &out, SafeBytes const &b) {
-  std::string hex(b.size() * 2 + 1, ' ');
+ostream &operator<<(ostream &out, SafeBytes const &b) {
+  string hex(b.size() * 2 + 1, ' ');
   sodium_bin2hex(&hex[0], hex.size(), &b[0], b.size());
   return out << hex;
 }
