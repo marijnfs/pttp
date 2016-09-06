@@ -26,11 +26,12 @@ int main(int argc, char **argv) {
       cout << part << " ";
     cout << endl;
 
-    msg[2] = "bla";
+    //msg[2] = "bla";
     //auto msg = sock.recv();
 
 
     sock.send_multi(msg);
+        sock.send_multi(msg);
   }
    
   return 0;
