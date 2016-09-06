@@ -13,11 +13,16 @@
 
 struct Socket {
   Socket(void *ctx, int type_, std::string addr_);
-
+  ~Socket();
   void send(Bytes &data);
-  
+
   Bytes recv();
 
+  void send_multi(std::vector<Bytes> &data);
+
+  std::vector<Bytes> recv_multi();
+
+  
   void subscribe(std::string pref);
   
   std::string addr;

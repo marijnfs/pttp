@@ -140,5 +140,4 @@ struct SignedMessage {
 
 
 
-std::ostream &operator<<(std::ostream &out, SafeBytes const &b);
 #endif

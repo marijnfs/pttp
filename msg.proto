@@ -1,0 +1,6 @@
+syntax = "proto3";
+package msg;
+
+message AddrResponse {
+	repeated string addresses = 1;
+}

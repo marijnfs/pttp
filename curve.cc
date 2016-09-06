@@ -178,8 +178,3 @@ bool SignedMessage::verify(PublicSignKey &pub) {
 			  &pub[0]) == 0;
 }
 
-ostream &operator<<(ostream &out, SafeBytes const &b) {
-  string hex(b.size() * 2 + 1, ' ');
-  sodium_bin2hex(&hex[0], hex.size(), &b[0], b.size());
-  return out << hex;
-}
