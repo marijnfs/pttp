@@ -6,8 +6,8 @@ using namespace std;
 Context *Context::s = 0;
 
 
-Socket::Socket(void *ctx, int type_, string addr_) : type(type_), addr(addr_) {
-  sock = zmq_socket(ctx, type);
+Socket::Socket(int type_, string addr_) : type(type_), addr(addr_) {
+  sock = zmq_socket(Context::inst().ctx, type);
   assertthrow(sock, ZMQErr("Couldnt create socket"));
 
   if (type == ZMQ_REP || type == ZMQ_PUB || type == ZMQ_ROUTER || type == ZMQ_DEALER) {
@@ -15,9 +15,9 @@ Socket::Socket(void *ctx, int type_, string addr_) : type(type_), addr(addr_) {
     assertthrow(zmq_bind(sock, addr.c_str()) != -1, ZMQErr("couldnt connect"));
   } else {
     if (type == ZMQ_REQ) {
-      zmq_setsockopt(sock, ZMQ_IDENTITY, "123", 3);
+      assertthrow( zmq_setsockopt(sock, ZMQ_IDENTITY, "123", 3) != -1, ZMQErr("Couldnt set identity") );
       int one(1);
-      zmq_setsockopt(sock, ZMQ_IMMEDIATE, &one, sizeof(int));
+      assertthrow( zmq_setsockopt(sock, ZMQ_IMMEDIATE, &one, sizeof(one)) != -1, ZMQErr("Could set immediate"));
     }
 
     cout << "connecting to " << addr << endl;
@@ -30,33 +30,21 @@ Socket::~Socket() {
   zmq_close(sock);
 }
 
-void Socket::send(Bytes &data) {
+void Socket::send(Bytes &data, bool more) {
   zmq_msg_t *msg = new zmq_msg_t;
   int rc = zmq_msg_init_size (msg, data.size());
   assertthrow(rc != -1, ZMQErr("Failed msg init"));
   memcpy((char*)zmq_msg_data(msg), &data[0], data.size());
   //copy(&data[0], &data[data.size()], (char*)zmq_msg_data(msg));
-  cout << "sending " << data.size() << endl;
-  rc = zmq_msg_send(msg, sock, 0); //ZMQ_DONTWAIT for polling
+  cout << "sending " << data << endl;
+  rc = zmq_msg_send(msg, sock, more ? ZMQ_MORE : 0); //ZMQ_DONTWAIT for polling
   assertthrow(rc != -1, ZMQErr("Failed sending"));
 }
 
-void Socket::send_multi(vector<Bytes> &data) {
-  for (int i(0); i < data.size(); ++i) {
-    if (data[i].size() == 0) {
-      int rc = zmq_send(sock, 0, 0, (i != data.size() - 1 ? ZMQ_MORE : 0));
-      assert (rc != -1);
-      continue;
-    }
-    cout << "sending part " << i << " " << data[i] << endl;
-    zmq_msg_t *msg = new zmq_msg_t;
-    int rc = zmq_msg_init_size (msg, data[i].size());
-    assertthrow(rc != -1, ZMQErr("Failed msg init"));
-    //if (data[i].size()) copy(&(data[i][0]), &(data[i][data.size()]), (char*)zmq_msg_data(msg));
-    memcpy((char*)zmq_msg_data(msg), &data[0], data.size());
-    cout << (i != data.size() - 1 ? ZMQ_MORE : 0) << endl;
-    rc = zmq_msg_send(msg, sock, (i != data.size() - 1 ? ZMQ_MORE : 0));
-    assertthrow(rc != -1, ZMQErr("Failed sending"));
+void Socket::send_multi(vector<Bytes> &msgs) {
+  for (int i(0); i < msgs.size(); ++i) {
+    cout << "sending part " << i << " " << msgs[i] << endl;
+    send(msgs[i], i != msgs.size() - 1);
   }
 }
 
@@ -98,11 +86,10 @@ vector<Bytes> Socket::recv_multi() {
     Bytes &data = last(msgs);
     memcpy(&data[0], (char*)zmq_msg_data(msg), data.size());
     cout << data << endl;
+
     int more(0);
     size_t moresz(sizeof(more));
-    
     rc = zmq_getsockopt(sock, ZMQ_RCVMORE, &more, &moresz);
-    cout << rc << " " << zmq_strerror(zmq_errno()) << endl;
     assertthrow(rc != -1, ZMQErr("Sockop failed"));
 
     zmq_msg_close(msg);
@@ -137,8 +124,9 @@ void Context::init() {
 Context::~Context() {
   if (ctx)
     zmq_ctx_shutdown(ctx);
+  cout << "Context Destroyed" << endl;
 }
 
-Socket Context::socket(int type, string addr) {
-  return Socket(ctx, type, addr);
-}
+//Socket Context::socket(int type, string addr) {
+//  return Socket(ctx, type, addr);
+//}

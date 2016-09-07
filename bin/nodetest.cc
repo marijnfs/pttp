@@ -22,17 +22,18 @@ int main(int argc, char **argv) {
     message[i] = i;
   
   
-  auto sock = Context::inst().socket(ZMQ_REQ, constr.c_str());
+  Socket sock(ZMQ_REQ, constr.c_str());
 
   
   sock.send(message);
   //sock.send(message);
   cout << "rec" << endl;
-  sock.recv_multi();
-  cout << "sending 2" << endl;
-  sock.send(message);
-  sock.recv();
-
+  auto msg = sock.recv();
+  cout << "got: " << msg << endl;
+  //cout << "sending 2" << endl;
+  //sock.send(message);
+  //sock.recv();
+  
   
     
   return 0;

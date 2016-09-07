@@ -12,9 +12,9 @@
 #include "err.h"
 
 struct Socket {
-  Socket(void *ctx, int type_, std::string addr_);
+  Socket(int type_, std::string addr_);
   ~Socket();
-  void send(Bytes &data);
+  void send(Bytes &data, bool more = false);
 
   Bytes recv();
 
@@ -39,7 +39,7 @@ struct Context {
 
   ~Context();
 
-  Socket socket(int type, std::string addr);
+  //Socket socket(int type, std::string addr);
 
   void *ctx;
   static Context *s;

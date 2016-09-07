@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
   assert(argc > 1);
   string constr(argv[1]);
   
-  auto sock = Context::inst().socket(ZMQ_ROUTER, constr.c_str());
+  Socket sock(ZMQ_ROUTER, constr.c_str());
 
   while (true) {
     cout << "receiving" << endl;
@@ -29,9 +29,7 @@ int main(int argc, char **argv) {
     //msg[2] = "bla";
     //auto msg = sock.recv();
 
-
     sock.send_multi(msg);
-        sock.send_multi(msg);
   }
    
   return 0;
