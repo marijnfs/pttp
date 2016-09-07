@@ -117,6 +117,7 @@ Context &Context::inst() {
 }
 
 void Context::init() {
+  cout << "Initialising Context" << endl;
   ctx = zmq_ctx_new();
   assertthrow(ctx, ZMQErr("Couldnt create context"));
 }
