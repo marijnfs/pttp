@@ -19,12 +19,11 @@ int main(int argc, char **argv) {
   Socket sock(ZMQ_ROUTER, constr.c_str());
 
   while (true) {
-    cout << "receiving" << endl;
     vector<Bytes> msg = sock.recv_multi();
 
-    for (auto part : msg)
-      cout << part << " ";
-    cout << endl;
+    //for (auto part : msg)
+    //  cout << part << " ";
+    //cout << endl;
 
     //msg[2] = "bla";
     //auto msg = sock.recv();

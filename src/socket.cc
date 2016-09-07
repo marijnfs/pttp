@@ -36,7 +36,7 @@ void Socket::send(Bytes &data, bool more) {
   assertthrow(rc != -1, ZMQErr("Failed msg init"));
   memcpy((char*)zmq_msg_data(msg), &data[0], data.size());
   //copy(&data[0], &data[data.size()], (char*)zmq_msg_data(msg));
-  cout << "sending [" << data << "]" << endl;
+  cout << "sending [" << data << "]" << (more ? "+" : "") << endl;
   rc = zmq_msg_send(msg, sock, more ? ZMQ_MORE : 0); //ZMQ_DONTWAIT for polling
   assertthrow(rc != -1, ZMQErr("Failed sending"));
 }
@@ -77,15 +77,14 @@ vector<Bytes> Socket::recv_multi() {
     int rc = zmq_msg_init (msg);
     assertthrow(rc != -1, ZMQErr("msg init failed"));
 
-    cout << "recving" << endl;
+    cout << "receiving" << endl;
     rc = zmq_msg_recv(msg, sock, 0);//ZMQ_DONTWAIT for polling
     assertthrow(rc != -1, ZMQErr("recieving failed failed"));
-    cout << "got something: " << endl;
+    
     msgs.push_back(Bytes(rc));
     
     Bytes &data = last(msgs);
     memcpy(&data[0], (char*)zmq_msg_data(msg), data.size());
-    cout << data << endl;
 
     int more(0);
     size_t moresz(sizeof(more));
@@ -93,6 +92,7 @@ vector<Bytes> Socket::recv_multi() {
     assertthrow(rc != -1, ZMQErr("Sockop failed"));
 
     zmq_msg_close(msg);
+    cout << "got: [" << data << "]" << (more ? "+" : "" ) << endl;
     if (!more)
       break;
   }
