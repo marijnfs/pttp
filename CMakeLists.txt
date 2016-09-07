@@ -29,5 +29,5 @@ file(GLOB CPP_HEADERS inc/*.h)
 add_executable(node ${CPP_HEADERS} ${CPP_SOURCE} bin/node.cc)
 target_link_libraries(node ${PROTOBUF_LIBRARIES} -lzmq -lsodium)
 
-add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} bin/node.cc)
+add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} bin/nodetest.cc)
 target_link_libraries(nodetest ${PROTOBUF_LIBRARIES} -lzmq -lsodium)
