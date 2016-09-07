@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
 
     sock.send_multi(msg);
   }
-   
+
+  Context::shutdown();
   return 0;
 }

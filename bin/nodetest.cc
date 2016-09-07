@@ -35,6 +35,6 @@ int main(int argc, char **argv) {
   //sock.recv();
   
   
-    
+  Context::shutdown();
   return 0;
 }

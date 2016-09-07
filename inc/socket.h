@@ -34,9 +34,10 @@ struct Context {
   Context();
   
   static Context &inst();
-
+  static void shutdown();
+  
   void init();
-
+  
   ~Context();
 
   //Socket socket(int type, std::string addr);
