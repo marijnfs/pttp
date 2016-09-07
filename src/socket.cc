@@ -6,13 +6,13 @@ using namespace std;
 Context *Context::s = 0;
 
 
-Socket::Socket(int type_, string addr_) : type(type_), addr(addr_) {
+Socket::Socket(int type_, string addr_) : type(type_), addr(addr_), sock(0) {
   sock = zmq_socket(Context::inst().ctx, type);
   assertthrow(sock, ZMQErr("Couldnt create socket"));
 
   if (type == ZMQ_REP || type == ZMQ_PUB || type == ZMQ_ROUTER || type == ZMQ_DEALER) {
     cout << "binding to " << addr << endl;
-    assertthrow(zmq_bind(sock, addr.c_str()) != -1, ZMQErr("couldnt connect"));
+    assertthrow(zmq_bind(sock, addr.c_str()) != -1, ZMQErr("couldn't connect"));
   } else {
     if (type == ZMQ_REQ) {
       //assertthrow( zmq_setsockopt(sock, ZMQ_IDENTITY, "123", 3) != -1, ZMQErr("Couldnt set identity") );
@@ -21,7 +21,7 @@ Socket::Socket(int type_, string addr_) : type(type_), addr(addr_) {
     }
 
     cout << "connecting to " << addr << endl;
-    assertthrow(zmq_connect(sock, addr.c_str()) != -1, ZMQErr("couldnt connect"));
+    assertthrow(zmq_connect(sock, addr.c_str()) != -1, ZMQErr("couldn't connect"));
   }
 }
 
@@ -31,13 +31,15 @@ Socket::~Socket() {
 }
 
 void Socket::send(Bytes &data, bool more) {
-  zmq_msg_t *msg = new zmq_msg_t;
-  int rc = zmq_msg_init_size (msg, data.size());
+  zmq_msg_t msg;
+  int rc = zmq_msg_init_size (&msg, data.size());
   assertthrow(rc != -1, ZMQErr("Failed msg init"));
-  memcpy((char*)zmq_msg_data(msg), &data[0], data.size());
+
+  memcpy((char*)zmq_msg_data(&msg), &data[0], data.size());
   //copy(&data[0], &data[data.size()], (char*)zmq_msg_data(msg));
+
   cout << "sending [" << data << "]" << (more ? "+" : "") << endl;
-  rc = zmq_msg_send(msg, sock, more ? ZMQ_MORE : 0); //ZMQ_DONTWAIT for polling
+  rc = zmq_msg_send(&msg, sock, more ? ZMQ_SNDMORE : 0); //ZMQ_DONTWAIT for polling
   assertthrow(rc != -1, ZMQErr("Failed sending"));
 }
 
@@ -49,20 +51,20 @@ void Socket::send_multi(vector<Bytes> &msgs) {
 }
 
 Bytes Socket::recv() {
-  zmq_msg_t *msg = new zmq_msg_t;
-  int rc = zmq_msg_init (msg);
+  zmq_msg_t msg;
+  int rc = zmq_msg_init (&msg);
   assertthrow(rc != -1, ZMQErr("msg init failed"));
     
-  rc = zmq_msg_recv(msg, sock, 0);//ZMQ_DONTWAIT for polling
+  rc = zmq_msg_recv(&msg, sock, 0);//ZMQ_DONTWAIT for polling
   assertthrow(rc != -1, ZMQErr("recieving failed failed"));
 
   //if (rc > MAX_MSG)
   // throw Err("Message too big");
   
   Bytes data(rc);
-  memcpy(&data[0], (char*)zmq_msg_data(msg), rc);
+  memcpy(&data[0], (char*)zmq_msg_data(&msg), rc);
 
-  zmq_msg_close(msg);
+  zmq_msg_close(&msg);
   return data;
 }
 
@@ -73,25 +75,25 @@ vector<Bytes> Socket::recv_multi() {
   size_t moresz(sizeof(more));
   
   while (true) {
-    zmq_msg_t *msg = new zmq_msg_t;
-    int rc = zmq_msg_init (msg);
+    zmq_msg_t msg;
+    int rc = zmq_msg_init(&msg);
     assertthrow(rc != -1, ZMQErr("msg init failed"));
 
     cout << "receiving" << endl;
-    rc = zmq_msg_recv(msg, sock, 0);//ZMQ_DONTWAIT for polling
+    rc = zmq_msg_recv(&msg, sock, 0);//ZMQ_DONTWAIT for polling
     assertthrow(rc != -1, ZMQErr("recieving failed failed"));
     
     msgs.push_back(Bytes(rc));
     
     Bytes &data = last(msgs);
-    memcpy(&data[0], (char*)zmq_msg_data(msg), data.size());
+    memcpy(&data[0], (char*)zmq_msg_data(&msg), data.size());
 
     int more(0);
     size_t moresz(sizeof(more));
     rc = zmq_getsockopt(sock, ZMQ_RCVMORE, &more, &moresz);
     assertthrow(rc != -1, ZMQErr("Sockop failed"));
 
-    zmq_msg_close(msg);
+    zmq_msg_close(&msg);
     cout << "got: [" << data << "]" << (more ? "+" : "" ) << endl;
     if (!more)
       break;
