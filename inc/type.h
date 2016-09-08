@@ -2,7 +2,7 @@
 #define __BYTES_H__
 
 #include <vector>
-#include <cstdint>
+#include <string.h>
 #include <string>
 
 //typedef std::vector<uint8_t> Bytes;
@@ -18,6 +18,7 @@ struct Bytes : public std::vector<uint8_t> {
     memcpy(&s[0], &(*this)[0], size());
     return s;
   }
+ 
 };
 
 std::ostream &operator<<(std::ostream &out, Bytes const &b);

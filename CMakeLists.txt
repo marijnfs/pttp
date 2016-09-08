@@ -10,12 +10,13 @@ if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
 endif()
 
 find_package(Protobuf QUIET REQUIRED)
+include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-#PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS inc/msg.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS inc/msg.proto)
 
-set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
-set(CMAKE_CXX_FLAGS "-stdlib=libc++ -std=c++14 -lc++")
+#set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+set(CMAKE_CXX_FLAGS "-std=c++14")
 
 include_directories(
     inc
@@ -26,8 +27,8 @@ file(GLOB CPP_SOURCE src/*.cc)
 file(GLOB CPP_HEADERS inc/*.h)
 
 
-add_executable(node ${CPP_HEADERS} ${CPP_SOURCE} bin/node.cc)
+add_executable(node ${CPP_HEADERS} ${CPP_SOURCE} ${PROTO_SRCS} ${PROTO_HDRS} bin/node.cc)
 target_link_libraries(node ${PROTOBUF_LIBRARIES} -lzmq -lsodium)
 
-add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} bin/nodetest.cc)
+add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} ${PROTO_SRCS} ${PROTO_HDRS} bin/nodetest.cc)
 target_link_libraries(nodetest ${PROTOBUF_LIBRARIES} -lzmq -lsodium)

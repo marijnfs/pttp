@@ -9,7 +9,8 @@
 #include "socket.h"
 #include "curve.h"
 
-//#include "msg.pb.h"
+#include "msg.pb.h"
+#include "convert.h"
 
 using namespace std;
 
