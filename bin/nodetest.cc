@@ -18,16 +18,18 @@ int main(int argc, char **argv) {
   assert(argc > 1);
   string constr(argv[1]);
   
-  SafeBytes message(20);
-  for (int i(0); i < message.size(); ++i)
-    message[i] = i;
-  
   
   Socket sock(ZMQ_REQ, constr.c_str());
 
+  AddrResponse resp;
+  resp.add_addresses("test");
+  resp.add_addresses("test2");
+  resp.add_addresses("test3");
+
+  Bytes message(t_to_bytes(resp));
   
   sock.send(message);
-  //sock.send(message);
+  
   cout << "rec" << endl;
   auto msg = sock.recv();
   cout << "got: " << msg << endl;
