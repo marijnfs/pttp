@@ -32,3 +32,6 @@ target_link_libraries(node ${PROTOBUF_LIBRARIES} -lzmq -lsodium)
 
 add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} ${PROTO_SRCS} ${PROTO_HDRS} bin/nodetest.cc)
 target_link_libraries(nodetest ${PROTOBUF_LIBRARIES} -lzmq -lsodium)
+
+add_executable(snd ${CPP_HEADERS} ${CPP_SOURCE} ${PROTO_SRCS} ${PROTO_HDRS} bin/snd.cc)
+target_link_libraries(snd ${PROTOBUF_LIBRARIES} -lzmq -lsodium)

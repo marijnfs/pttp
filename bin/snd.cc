@@ -35,6 +35,7 @@ int main() {
   cout << unsealed.message << endl;
 
   SignKeyPair kp3;
+  cout << "sign keypair: " << kp3.pub << " " << kp3.priv << endl;
   SignedMessage sign(message, kp3.priv);
   cout << sign.signed_message << endl;
   SignedMessage verified(sign.signed_message);
@@ -42,12 +43,12 @@ int main() {
   cout << "signed: " << verified.verify(kp3.pub) << endl;
   cout << verified.message << endl;
 
-  auto sock = Context::inst().socket(ZMQ_PUB, "tcp://127.0.0.1:1234");
+  auto sock = Socket(ZMQ_PUB, "tcp://127.0.0.1:1234");
 
   int n(0);
   while (true) {
     cout << "send request" << endl;
-    vector<uint8_t> bytes(1);
+    Bytes bytes(1);
     bytes[0] = n;
 
     sock.send(bytes);

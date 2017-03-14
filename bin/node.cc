@@ -24,6 +24,9 @@ int main(int argc, char **argv) {
   while (true) {
     vector<Bytes> msg = sock.recv_multi();
 
+    for (auto m : msg)
+      cout << m << " ";
+    cout << endl;
     auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
     for (auto addr : addrresp.addresses())
       cout << addr << endl;
