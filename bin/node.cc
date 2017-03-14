@@ -9,7 +9,6 @@
 #include "socket.h"
 #include "curve.h"
 
-#include "msg.pb.h"
 #include "convert.h"
 
 using namespace std;
@@ -27,16 +26,9 @@ int main(int argc, char **argv) {
     for (auto m : msg)
       cout << m << " ";
     cout << endl;
-    auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
-    for (auto addr : addrresp.addresses())
-      cout << addr << endl;
-    //for (auto part : msg)
-    //  cout << part << " ";
-    //cout << endl;
-
-    //msg[2] = "bla";
-    //auto msg = sock.recv();
-
+    //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
+    //for (auto addr : addrresp.addresses())
+    //  cout << addr << endl;
     sock.send_multi(msg);
   }
 
