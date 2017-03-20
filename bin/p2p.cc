@@ -14,9 +14,16 @@
 #include "curve.h"
 
 #include "convert.h"
+#include "messages.capnp.h"
 
 using namespace std;
 
+enum MessageType {
+  HELLO = 0,
+  WELCOME = 1,
+  REQ_LIST = 2,
+  
+};
 
 int main(int argc, char **argv) {
   assert(argc > 1);
@@ -24,27 +31,22 @@ int main(int argc, char **argv) {
   
   Socket sock(ZMQ_ROUTER, constr.c_str());
 
-
-    SignKeyPair kp;
-    Bytes message(10);
-    Curve::inst().random_bytes(message);
-    SignedMessage sign_message(message, kp.priv);
-
-    for (int i(0); i < 10000; ++i) {
-      sign_message.verify(kp.pub);
-    //cout << sign_message.verify(kp.pub) << endl;
-    }
+  vector<Bytes> message;
+  Bytes mtype(1);
+  mtype[0] = HELLO;
+  message.push_back(mtype);
   
-  
-  /*  ::capnp::MallocMessageBuilder message;
+  ::capnp::MallocMessageBuilder message_builder;
 
-  auto date_builder = message.initRoot<Date>();
-  date_builder.setYear(200);
-  date_builder.setMonth(3);
-  date_builder.setDay(3);
+  auto message_obj = message_builder.initRoot<Hello>();
+  message_obj.setPub("asdf");
+  message_obj.setPort(3);
 
-  auto flat_array = messageToFlatArray(message);
+  auto flat_array = messageToFlatArray(message_builder);
   auto data = flat_array.asBytes();
+
+  Bytes msg_bytes(reinterpret_cast<uint8_t*>(data.begin()), reinterpret_cast<uint8_t*>(data.end()));
+  cout << msg_bytes << endl;
   for (auto d : data)
     cout << d;
   cout << endl;

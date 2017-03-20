@@ -125,6 +125,7 @@ void Context::init() {
 }
 
 void Context::shutdown() {
+  cout << "Context Shutdown" << endl;
   if (Context::s) {
     Context::s->~Context();
   }
