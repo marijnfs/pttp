@@ -1,4 +1,4 @@
-@0x9786a5ccc9815e0c;
+@0xe6ca35b9af8189a0;
 
 struct RegularCredit {
        pub @0 :Text;
@@ -6,32 +6,42 @@ struct RegularCredit {
 
 struct RelTimeLockedCredit {
        pub @0 :Text;
-       time @1 :Date;
+       time @1 :UInt64;
 }
 
-struct Credit {
+struct Account {
        version @0 :UInt32;
        data @1 :Text;
-       amount @2 :UInt64;
+}
+
+
+struct Witness {
+       type @0 :UInt32;
+       data @1 :Text;
 }
 
 struct Transaction {
+       struct Credit {
+       	      account @0 :Text;
+      	      amount @1 :UInt64;
+       }
        credits @0 :List(Credit);
-       signatures @1 :List(Text); //only verify negative credits, have to sign the full list
-       transaction_id :Text;
+       signatures @1 :List(Witness); #only verify negative credits, can sign the full list or only itself
+       transactionId @2 :Text;
+       bla @3 :List(Text);
 }
 
 struct Block {
        hash @0 :Text;
-       transaction_hash @1 :Text;
-       utxo_hash @2 :Text;
-       prev_hash @3 :Text;
+       transactionHash @1 :Text;
+       utxoHash @2 :Text;
+       prevHash @3 :Text;
        salt @4 :Text;
-       time @5 :Date;
+       time @5 :UInt64;
 }
 
-struct Transactions {
-       transactions @0 :List(Transaction);
+struct TransactionSet {
+      transactions @0 :List(Transaction);
 }
 
 
@@ -44,7 +54,6 @@ struct Welcome {
        pub @0 :Text;
 }
 
-struct List {
-       ips @0 :Text;
+struct IpList {
+       ips @0 :List(Text);
 }
-
