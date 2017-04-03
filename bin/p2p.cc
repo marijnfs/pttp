@@ -25,6 +25,13 @@ enum MessageType {
   
 };
 
+struct GTD {
+
+  int operator()() {
+    return 0;
+  }
+};
+
 int main(int argc, char **argv) {
   assert(argc > 1);
   string constr(argv[1]);
@@ -39,8 +46,8 @@ int main(int argc, char **argv) {
   ::capnp::MallocMessageBuilder message_builder;
 
   auto message_obj = message_builder.initRoot<Hello>();
-  message_obj.setPub("asdf");
-  message_obj.setPort(3);
+  //message_obj.setPub("asdf");
+  //message_obj.setPort(3);
 
   auto flat_array = messageToFlatArray(message_builder);
   auto data = flat_array.asBytes();
@@ -50,17 +57,35 @@ int main(int argc, char **argv) {
   for (auto d : data)
     cout << d;
   cout << endl;
-  /*while (true) {
-    vector<Bytes> msg = sock.recv_multi();
 
-    for (auto m : msg)
-      cout << m << " ";
-    cout << endl;
-    //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
-    //for (auto addr : addrresp.addresses())
-    //  cout << addr << endl;
-    sock.send_multi(msg);
-    }*/
+
+  set<string> ips;
+  
+  GTD gtd;
+
+  enum Types {
+    SERVE,
+    N_TYPES
+  };
+  
+  while (true) {
+    auto td = gtd();
+
+    
+    if (td == SERVE) {    
+      vector<Bytes> msg = sock.recv_multi();
+      
+      for (auto m : msg)
+	cout << m << " ";
+      cout << endl;
+      cout << "nmsg: " << msg.size() << endl;
+      
+      //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
+      //for (auto addr : addrresp.addresses())
+      //  cout << addr << endl;
+      sock.send_multi(msg);
+    }
+  }
 
   return 0;
 }

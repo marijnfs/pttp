@@ -19,6 +19,32 @@
 
 using namespace std;
 
+bool create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
+  int n = accounts.size();
+  if (amounts.size() != n) return false;
+  
+  ::capnp::MallocMessageBuilder credit_message;
+  auto credit_set_builder = credit_message.initRoot<CreditSet>();
+  auto credit_builder = credit_set_builder.initCredits(n);
+
+  for (int i(0); i < n; ++i) {
+    //credit_builder[i].setAccount((kj::ArrayPtr<kj::byte>)accounts[i].pub);
+    credit_builder[i].setAccount(accounts[i].pub.kjp());
+    credit_builder[i].setAmount(amounts[i]);
+  }
+  auto credit_data = messageToFlatArray(credit_message).asBytes();
+  Bytes credit_bytes(credit_data.begin(), credit_data.size());
+
+  ::capnp::MallocMessageBuilder transaction_message;
+  auto transaction_builder = transaction_message.initRoot<Transaction>();
+
+  transaction_builder.initCreditSets(1)[0] = credit_bytes.kjp();
+
+
+  //bla[0].set(bla2);
+  
+}
+
 
 
 int main(int argc, char **argv) {
@@ -39,22 +65,22 @@ int main(int argc, char **argv) {
     sign_message.verify(kp.pub);
     //cout << sign_message.verify(kp.pub) << endl;
     }*/
-  
+
   
   ::capnp::MallocMessageBuilder cap_message;
 
-  ::capnp::MallocMessageBuilder credit_message;
   auto builder = cap_message.initRoot<Transaction>();
 
+  ::capnp::MallocMessageBuilder credit_message;
   auto credit_set_builder = credit_message.initRoot<CreditSet>();
   auto credit_builder = credit_set_builder.initCredits(3);
-  credit_builder[0].setAccount(static_cast<string>(accounts[0].pub));
+  credit_builder[0].setAccount(accounts[0].pub.kjp());
   credit_builder[0].setAmount(-10);
 
-  credit_builder[1].setAccount(static_cast<string>(accounts[1].pub));
+  credit_builder[1].setAccount(accounts[1].pub.kjp());
   credit_builder[1].setAmount(-14);
 
-  credit_builder[2].setAccount(static_cast<string>(accounts[2].pub));
+  credit_builder[2].setAccount(accounts[2].pub.kjp());
   credit_builder[2].setAmount(24);
 
   auto credit_data = messageToFlatArray(credit_message).asBytes();
@@ -69,7 +95,7 @@ int main(int argc, char **argv) {
   cout << enc_message.nonce << endl;
 
   Hash hash(enc_message.enc_message);
-  cout << hash.hash << endl;
+  cout << "hash: " << hash.hash << endl;
   
   EncryptedMessage dec_message(enc_message.enc_message);
   cout << dec_message.decrypt(kp1.pub, kp2.priv, enc_message.nonce) << endl;
@@ -83,7 +109,10 @@ int main(int argc, char **argv) {
   
   SignedMessage tmp(credit_signed.signed_message);
   cout << tmp.verify(accounts[0].pub) << endl;
- 
+  cout << "encrypt priv:" << kp1.priv << endl;
+  cout << kp1.pub << endl;
+  cout << "sign priv:" << accounts[0].priv << endl;
+  cout << accounts[0].pub << endl;
   auto sig_builder = builder.initSignatures(3);
 
   auto data = messageToFlatArray(cap_message).asBytes();

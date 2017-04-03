@@ -110,8 +110,6 @@ SignKeyPair::SignKeyPair() {
 }
 
 
-
-
 Hash::Hash(Bytes &m) : hash(crypto_generichash_BYTES) {
   crypto_generichash(&hash[0], hash.size(),
 		     &m[0], m.size(), NULL, 0);

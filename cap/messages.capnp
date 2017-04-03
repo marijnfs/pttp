@@ -5,23 +5,23 @@ struct RegularCredit {
 }
 
 struct RelTimeLockedCredit {
-       pub @0 :Text;
+       pub @0 :Data;
        time @1 :UInt64;
 }
 
 struct Account {
        version @0 :UInt32;
-       data @1 :Text;
+       data @1 :Data;
 }
 
 
 struct Witness {
        type @0 :UInt32; #for now refers to credit set signed, 0 = first, 1 = first+second, etc. To allow for fee increases etc.
-       data @1 :Text;
+       data @1 :Data;
 }
 
 struct Credit {
-       account @0 :Text;
+       account @0 :Data;
        amount @1 :UInt64;
 }
 
@@ -31,17 +31,17 @@ struct CreditSet {
 
 struct Transaction {
        #credits @0 :List(Credit);
-       creditSets @0 :List(Text); #serialised credit sets so they can be signed
+       creditSets @0 :List(Data); #serialised credit sets so they can be signed
        signatures @1 :List(Witness); #only verify negative credits, can sign the full list or only itself
-       transactionId @2 :Text;
+       transactionId @2 :Data;
 }
 
 struct Block {
-       hash @0 :Text;
-       transactionHash @1 :Text;
-       utxoHash @2 :Text;
-       prevHash @3 :Text;
-       salt @4 :Text;
+       hash @0 :Data;
+       transactionHash @1 :Data;
+       utxoHash @2 :Data;
+       prevHash @3 :Data;
+       salt @4 :Data;
        time @5 :UInt64;
 }
 
@@ -51,16 +51,16 @@ struct TransactionSet {
 
 
 struct Hello {
-       pub @0 :Text;
+       pub @0 :Data;
        port @1 :Int16;
 }
 
 struct Welcome {
-       pub @0 :Text;
+       pub @0 :Data;
 }
 
 struct IpList {
-       ips @0 :List(Text);
+       ips @0 :List(Data);
 }
 
 struct Message {

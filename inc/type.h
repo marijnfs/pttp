@@ -5,6 +5,10 @@
 #include <string.h>
 #include <string>
 
+#include <kj/common.h>
+#include <kj/string.h>
+
+
 //typedef std::vector<uint8_t> Bytes;
 
 struct Bytes : public std::vector<uint8_t> {
@@ -21,8 +25,20 @@ struct Bytes : public std::vector<uint8_t> {
     memcpy(&s[0], &(*this)[0], size());
     return s;
   }
+
+  kj::ArrayPtr<kj::byte> kjp() {
+    return static_cast<kj::ArrayPtr<kj::byte>>(*this);
+  }
+
+ template <typename T>
+   T ptr() {
+   return reinterpret_cast<T>(&(this[0]));
+ }
   
-  
+  operator kj::ArrayPtr<kj::byte>() {
+  //void bla() {
+    return kj::ArrayPtr<kj::byte>(&(*this)[0], size());
+  }
 };
 
 std::ostream &operator<<(std::ostream &out, Bytes const &b);
