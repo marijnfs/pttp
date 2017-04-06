@@ -65,14 +65,9 @@ int main(int argc, char **argv) {
       //::capnp::InputStreamMessageReader reader(ais);
 
       ReadMessage message(msg[2]);
-      auto b = message.root<Hello>();
-      cout << "port: " << b.getPort() << endl;
-      /*
+      auto reader = message.root<Message>();
+      //cout << "port: " << b.getPort() << endl;
       
-      //auto reader = cap_reader<Message>(msg[2]);
-      auto reader = ::capnp::readMessageUnchecked<Message>(msg[2].ptr<::capnp::word const *>());
-
-      //cout << reader.which() << endl;
       auto content = reader.getContent();
       
       //cout << content << endl;

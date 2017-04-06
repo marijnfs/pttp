@@ -57,19 +57,9 @@ int main(int argc, char **argv) {
 
   WriteMessage message;
   //auto builder = message.builder<Message>();
-  auto builder = message.builder<Hello>();
-  builder.setPort(42);
-  ///builder.getContent().setHello(hello_builder);
+  auto builder = message.builder<Message>();
+  //builder.setContent();
   
-  auto cap_data = messageToFlatArray(message.cap_message);
-  Bytes b(cap_data.begin(), cap_data.size());
-  auto p = b.kjwp();
-
-  cout << b << endl;
-  //::capnp::FlatArrayMessageReader reader(cap_data);
-  ::capnp::FlatArrayMessageReader reader(p);
-  auto r = reader.getRoot<Hello>();
-  cout << "P: " << r.getPort() << endl;
   Bytes data = message.bytes();
   sock.send(data);
   Bytes result = sock.recv();
