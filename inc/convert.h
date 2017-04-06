@@ -32,10 +32,19 @@ inline Bytes t_to_bytes(T &t) {
   return buf;
 };
 
-template <typename T>
-auto reader(Bytes &bytes) {
-  return ::capnp::readMessageUnchecked<T>(bytes.ptr<::capnp::word const *>());
-}
+
+struct ReadMessage {
+    ReadMessage(Bytes &bytes) : reader(bytes.kjwp()) {
+  
+    }
+
+  template <typename T>
+  auto root() {
+    return reader.getRoot<T>();
+  }
+  ::capnp::FlatArrayMessageReader reader;
+};
+  
 
 /*struct ReadMessage {
   //::capnp::MallocAllocator cap_message;
@@ -61,7 +70,7 @@ struct WriteMessage {
   }
 
   Bytes bytes() {
-    auto cap_data = messageToFlatArray(cap_message).asBytes();
+    auto cap_data = messageToFlatArray(cap_message);
     return Bytes(cap_data.begin(), cap_data.size());    
   }
 };

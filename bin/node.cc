@@ -51,10 +51,32 @@ int main(int argc, char **argv) {
   assert(argc > 1);
   string constr(argv[1]);
   
-  Socket sock(ZMQ_ROUTER, constr.c_str());
+  Socket sock(ZMQ_REQ, constr.c_str());
+  WriteMessage hello_message;
+  auto hello_builder = hello_message.builder<Hello>();
 
+  WriteMessage message;
+  //auto builder = message.builder<Message>();
+  auto builder = message.builder<Hello>();
+  builder.setPort(42);
+  ///builder.getContent().setHello(hello_builder);
+  
+  auto cap_data = messageToFlatArray(message.cap_message);
+  Bytes b(cap_data.begin(), cap_data.size());
+  auto p = b.kjwp();
 
-  vector<SignKeyPair> accounts(3);
+  cout << b << endl;
+  //::capnp::FlatArrayMessageReader reader(cap_data);
+  ::capnp::FlatArrayMessageReader reader(p);
+  auto r = reader.getRoot<Hello>();
+  cout << "P: " << r.getPort() << endl;
+  Bytes data = message.bytes();
+  sock.send(data);
+  Bytes result = sock.recv();
+
+  
+
+  //vector<SignKeyPair> accounts(3);
   
   
   /*  Bytes message(10);
@@ -67,7 +89,7 @@ int main(int argc, char **argv) {
     }*/
 
   
-  ::capnp::MallocMessageBuilder cap_message;
+  /*::capnp::MallocMessageBuilder cap_message;
 
   auto builder = cap_message.initRoot<Transaction>();
 

@@ -9,6 +9,8 @@
 #include <capnp/serialize.h>
 #include <capnp/serialize-packed.h>
 
+#include <kj/io.h>
+
 #include "err.h"
 #include "socket.h"
 #include "curve.h"
@@ -38,27 +40,6 @@ int main(int argc, char **argv) {
   
   Socket sock(ZMQ_ROUTER, constr.c_str());
 
-  vector<Bytes> message;
-  Bytes mtype(1);
-  mtype[0] = HELLO;
-  message.push_back(mtype);
-  
-  ::capnp::MallocMessageBuilder message_builder;
-
-  auto message_obj = message_builder.initRoot<Hello>();
-  //message_obj.setPub("asdf");
-  //message_obj.setPort(3);
-
-  auto flat_array = messageToFlatArray(message_builder);
-  auto data = flat_array.asBytes();
-
-  Bytes msg_bytes(reinterpret_cast<uint8_t*>(data.begin()), reinterpret_cast<uint8_t*>(data.end()));
-  cout << msg_bytes << endl;
-  for (auto d : data)
-    cout << d;
-  cout << endl;
-
-
   set<string> ips;
   
   GTD gtd;
@@ -79,7 +60,31 @@ int main(int argc, char **argv) {
 	cout << m << " ";
       cout << endl;
       cout << "nmsg: " << msg.size() << endl;
+
+      //kj::ArrayInputStream ais(msg[2].kjp());
+      //::capnp::InputStreamMessageReader reader(ais);
+
+      ReadMessage message(msg[2]);
+      auto b = message.root<Hello>();
+      cout << "port: " << b.getPort() << endl;
+      /*
       
+      //auto reader = cap_reader<Message>(msg[2]);
+      auto reader = ::capnp::readMessageUnchecked<Message>(msg[2].ptr<::capnp::word const *>());
+
+      //cout << reader.which() << endl;
+      auto content = reader.getContent();
+      
+      //cout << content << endl;
+      switch (content.which()) {
+	case Message::Content::HELLO:
+	  cout << "hello" << endl;
+	  break;
+	default:
+	  cout << "default" << endl;
+	  break;
+	}
+      */
       //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
       //for (auto addr : addrresp.addresses())
       //  cout << addr << endl;
