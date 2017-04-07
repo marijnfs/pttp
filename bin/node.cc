@@ -22,9 +22,9 @@ using namespace std;
 bool create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
   int n = accounts.size();
   if (amounts.size() != n) return false;
-  
-  ::capnp::MallocMessageBuilder credit_message;
-  auto credit_set_builder = credit_message.initRoot<CreditSet>();
+
+  WriteMessage credit_message;
+  auto credit_set_builder = credit_message.builder<CreditSet>();
   auto credit_builder = credit_set_builder.initCredits(n);
 
   for (int i(0); i < n; ++i) {
@@ -32,14 +32,14 @@ bool create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
     credit_builder[i].setAccount(accounts[i].pub.kjp());
     credit_builder[i].setAmount(amounts[i]);
   }
-  auto credit_data = messageToFlatArray(credit_message).asBytes();
-  Bytes credit_bytes(credit_data.begin(), credit_data.size());
-
+  
+  auto credit_data = credit_message.bytes();
+  
   ::capnp::MallocMessageBuilder transaction_message;
   auto transaction_builder = transaction_message.initRoot<Transaction>();
 
-  transaction_builder.initCreditSets(1)[0] = credit_bytes.kjp();
-
+  transaction_builder.initCreditSets(1)[0] = credit_data.kjp();
+  
 
   //bla[0].set(bla2);
   
@@ -52,13 +52,14 @@ int main(int argc, char **argv) {
   string constr(argv[1]);
   
   Socket sock(ZMQ_REQ, constr.c_str());
-  WriteMessage hello_message;
-  auto hello_builder = hello_message.builder<Hello>();
+  //WriteMessage hello_message;
+  //xauto hello_builder = hello_message.builder<Hello>();
 
   WriteMessage message;
   //auto builder = message.builder<Message>();
   auto builder = message.builder<Message>();
-  //builder.setContent();
+  auto hello_builder = builder.getContent().initHello();
+  hello_builder.setPort(120);
   
   Bytes data = message.bytes();
   sock.send(data);

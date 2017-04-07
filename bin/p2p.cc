@@ -72,14 +72,17 @@ int main(int argc, char **argv) {
       
       //cout << content << endl;
       switch (content.which()) {
-	case Message::Content::HELLO:
-	  cout << "hello" << endl;
+      case Message::Content::HELLO: {
+	  auto hello = content.getHello();
+	  cout << "hello " << hello.getPort() << endl;
 	  break;
-	default:
-	  cout << "default" << endl;
-	  break;
-	}
-      */
+      }
+      default: {
+	cout << "default" << endl;
+	break;
+      }
+      }
+      
       //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
       //for (auto addr : addrresp.addresses())
       //  cout << addr << endl;
