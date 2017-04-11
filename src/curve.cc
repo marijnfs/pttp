@@ -176,3 +176,15 @@ bool SignedMessage::verify(PublicSignKey &pub) {
 			  &pub[0]) == 0;
 }
 
+
+
+Signature::Signature(Bytes &message, SecretSignKey &sk) : sig(crypto_sign_BYTES)
+{
+  crypto_sign_detached(&sig[0], NULL, &message[0], message.size(), &sk[0]);
+}
+
+Signature::Signature(Bytes &signature_) : sig(signature_) {}
+
+bool Signature::verify(Bytes &message, PublicSignKey &pub) {
+  return crypto_sign_verify_detached(&sig[0], &message[0], message.size(), &pub[0]) == 0;
+}

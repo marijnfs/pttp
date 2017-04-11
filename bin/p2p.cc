@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdint>
 #include <thread>
+#include <map>
 
 #include <capnp/message.h>
 #include <capnp/serialize.h>
@@ -20,18 +21,17 @@
 
 using namespace std;
 
-enum MessageType {
-  HELLO = 0,
-  WELCOME = 1,
-  REQ_LIST = 2,
-  
-};
 
 struct GTD {
 
   int operator()() {
     return 0;
   }
+};
+
+struct Node {
+  Bytes pub;
+  
 };
 
 int main(int argc, char **argv) {
@@ -48,12 +48,16 @@ int main(int argc, char **argv) {
     SERVE,
     N_TYPES
   };
+
+
+  
+  map<string, int> utxo;
   
   while (true) {
     auto td = gtd();
 
     
-    if (td == SERVE) {    
+    if (td == SERVE) {
       vector<Bytes> msg = sock.recv_multi();
       
       for (auto m : msg)
@@ -69,20 +73,35 @@ int main(int argc, char **argv) {
       //cout << "port: " << b.getPort() << endl;
       
       auto content = reader.getContent();
+
+      WriteMessage response_msg;
+      auto resp_builder = response_msg.builder<Message>();
+      auto content_builder = resp_builder.getContent(); //build message from here
       
       //cout << content << endl;
       switch (content.which()) {
       case Message::Content::HELLO: {
 	  auto hello = content.getHello();
 	  cout << "hello " << hello.getPort() << endl;
+	  auto wc = content_builder.initWelcome();
+	  
 	  break;
+      }
+      case Message::Content::TRANSACTION: {
+	//process transaction
+	auto tx = content.getTransaction();
+	auto data = tx.getCreditSet();
+
+	break;
       }
       default: {
 	cout << "default" << endl;
 	break;
       }
       }
-      
+
+
+      msg[2] = response_msg.bytes();
       //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
       //for (auto addr : addrresp.addresses())
       //  cout << addr << endl;

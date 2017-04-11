@@ -19,30 +19,46 @@
 
 using namespace std;
 
-bool create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
+Bytes create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
   int n = accounts.size();
   if (amounts.size() != n) return false;
 
+  WriteMessage transaction_message;
+  auto transaction_builder = transaction_message.builder<Transaction>();
+
+  //setup credits
   WriteMessage credit_message;
   auto credit_set_builder = credit_message.builder<CreditSet>();
-  auto credit_builder = credit_set_builder.initCredits(n);
+  auto credits = credit_set_builder.initCredits(n);
 
+  int n_negative(0);
   for (int i(0); i < n; ++i) {
     //credit_builder[i].setAccount((kj::ArrayPtr<kj::byte>)accounts[i].pub);
-    credit_builder[i].setAccount(accounts[i].pub.kjp());
-    credit_builder[i].setAmount(amounts[i]);
+    credits[i].setAccount(accounts[i].pub.kjp());
+    credits[i].setAmount(amounts[i]);
+    if (amounts[i] < 0) n_negative++;
   }
-  
+
   auto credit_data = credit_message.bytes();
-  
-  ::capnp::MallocMessageBuilder transaction_message;
-  auto transaction_builder = transaction_message.initRoot<Transaction>();
+  transaction_builder.setCreditSet(credit_data.kjp());
 
-  transaction_builder.initCreditSets(1)[0] = credit_data.kjp();
+  //calculate hash
+  Hash hash(credit_data);
+  transaction_builder.setHash(hash.hash.kjp());
   
-
+  //setup witnesses
+  auto witness_builder = transaction_builder.initSignatures(n_negative);
+  int c(0);
+  vector<Signature> sigs(n_negative);
+  for (int i(0); i < n; ++i)
+    if (amounts[i] < 0) {
+      Signature sigs[c] = Signature(credit_data, accounts[i].priv);
+      witness_builder[c].setData(sigs[c].sig.kjp());
+      ++c;
+    }
+    
   //bla[0].set(bla2);
-  
+  return transaction_message.bytes();
 }
 
 

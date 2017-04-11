@@ -137,6 +137,16 @@ struct SignedMessage {
   bool verify(PublicSignKey &pub);
 };
 
+struct Signature {
+  SafeBytes sig;
+
+  Signature() {}
+  Signature(Bytes &message_, SecretSignKey &sk);
+  Signature(Bytes &signature_);
+
+  bool verify(Bytes &message, PublicSignKey &pub);
+};
+
 
 
 

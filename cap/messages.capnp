@@ -14,7 +14,7 @@ struct Account {
        data @1 :Data;
 }
 
-
+	
 struct Witness {
        type @0 :UInt32; #for now refers to credit set signed, 0 = first, 1 = first+second, etc. To allow for fee increases etc.
        data @1 :Data;
@@ -30,10 +30,9 @@ struct CreditSet {
 }
 
 struct Transaction {
-       #credits @0 :List(Credit);
-       creditSets @0 :List(Data); #serialised credit sets so they can be signed
+       creditSet @0 :Data; #serialised credit sets so they can be signed
        signatures @1 :List(Witness); #only verify negative credits, can sign the full list or only itself
-       transactionId @2 :Data;
+       hash @2 :Data; #blake hash of creditsets
 }
 
 struct Block {
@@ -59,6 +58,10 @@ struct Welcome {
        pub @0 :Data;
 }
 
+struct OK {
+       message @0 :Text;
+}
+
 struct IpList {
        ips @0 :List(Data);
 }
@@ -68,5 +71,7 @@ struct Message {
        	       hello @0 :Hello;
 	       welcome @1 :Welcome;
 	       iplist @2 :IpList;
+	       ok @3 :OK;
+	       transaction @4 :Transaction;
        }
 }
