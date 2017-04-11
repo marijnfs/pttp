@@ -61,6 +61,7 @@ struct SecretSignKey : public SafeBytes {
 
 struct PublicSignKey : public SafeBytes  {
   PublicSignKey();
+ PublicSignKey(Bytes &b) : ::SafeBytes(b) {}
 };
 
 struct Nonce : public SafeBytes {

@@ -61,6 +61,44 @@ Bytes create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
   return transaction_message.bytes();
 }
 
+bool process_transaction(Bytes &b, vector<PublicSignKey> *accounts, vector<int> *amounts) {  //only verifies internal witnesses
+  ReadMessage msg(b);
+  auto tx = msg.root<Transaction>();
+  auto credit_set = tx.getCreditSet();
+  Bytes credit_data(credit_set.begin(), credit_set.end());
+
+  ReadMessage credit_msg(credit_data);
+  auto credit_reader = credit_msg.root<CreditSet>();
+  auto credits = credit_reader.getCredits();
+  auto witnesses = tx.getSignatures();
+  
+  int n_neg(0);
+  int n = credits.size();
+  amounts->resize(n);
+  for (int i(0); i < n; ++i) {
+    int a = credits[i].getAmount();
+    (*amounts)[i] = a;
+    auto pub = credits[i].getAccount();
+    Bytes pub_bytes(pub.begin(), pub.end());
+    PublicSignKey pub_key(pub_bytes);
+    accounts->push_back(pub_bytes);
+    
+    if (a < 0) {
+      if (witnesses.size() >= n_neg)
+	return false;
+
+      auto witness_data = witnesses[n_neg].getData();
+      Bytes witness(witness_data.begin(), witness_data.end());
+      Signature sig(witness);
+      if (!sig.verify(credit_data, pub_key))
+	return false;
+      n_neg++;
+    }
+  }
+
+  return true;
+}
+
 
 
 int main(int argc, char **argv) {

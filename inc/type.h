@@ -19,6 +19,9 @@ struct Bytes : public std::vector<uint8_t> {
  Bytes(const char *c) : std::vector<uint8_t>() { std::string s(c); resize(s.size()); memcpy(&(*this)[0], &s[0], s.size()); }
 
   template <typename T>
+    Bytes(T *c, T *e) : std::vector<uint8_t>(c, e) {}
+
+  template <typename T>
     Bytes(const T *c, size_t n) : std::vector<uint8_t>(reinterpret_cast<uint8_t const *>(c), reinterpret_cast<uint8_t const *>(c + n)) {};
  Bytes(unsigned char *b, unsigned char *e) : std::vector<uint8_t>(b, e) {}
 
