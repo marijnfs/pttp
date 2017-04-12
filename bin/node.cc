@@ -14,7 +14,7 @@
 #include "curve.h"
 
 #include "convert.h"
-
+#include "util.h"
 #include "messages.capnp.h"
 
 using namespace std;
@@ -52,7 +52,7 @@ Bytes create_transaction(vector<SignKeyPair> &accounts, vector<int> amounts) {
   vector<Signature> sigs(n_negative);
   for (int i(0); i < n; ++i)
     if (amounts[i] < 0) {
-      Signature sigs[c] = Signature(credit_data, accounts[i].priv);
+      sigs[c] = Signature(credit_data, accounts[i].priv);
       witness_builder[c].setData(sigs[c].sig.kjp());
       ++c;
     }
@@ -67,6 +67,11 @@ bool process_transaction(Bytes &b, vector<PublicSignKey> *accounts, vector<int> 
   auto credit_set = tx.getCreditSet();
   Bytes credit_data(credit_set.begin(), credit_set.end());
 
+  Hash credit_hash(credit_data);
+  auto hash = tx.getHash();
+  if (Bytes(hash.begin(), hash.end()) != credit_hash.hash)
+    return false;
+  
   ReadMessage credit_msg(credit_data);
   auto credit_reader = credit_msg.root<CreditSet>();
   auto credits = credit_reader.getCredits();
@@ -84,7 +89,7 @@ bool process_transaction(Bytes &b, vector<PublicSignKey> *accounts, vector<int> 
     accounts->push_back(pub_bytes);
     
     if (a < 0) {
-      if (witnesses.size() >= n_neg)
+      if (n_neg >= witnesses.size())
 	return false;
 
       auto witness_data = witnesses[n_neg].getData();
@@ -104,7 +109,33 @@ bool process_transaction(Bytes &b, vector<PublicSignKey> *accounts, vector<int> 
 int main(int argc, char **argv) {
   assert(argc > 1);
   string constr(argv[1]);
+
+  // *** create transaction
+  vector<SignKeyPair> accounts(3);
+  vector<int> amounts(3);
+  amounts[0] = 10;
+  amounts[1] = -4;
+  amounts[2] = 12;
+
+  Bytes bla(accounts[0].priv);
+  cout << bla << endl;
+  string test = bytes_to_bech32(bla);
+  cout << test << endl;
+  cout << "priv: " << bytes_to_bech32(bla) << endl;
+  Bytes tx = create_transaction(accounts, amounts);
+
+
   
+  vector<PublicSignKey> new_accounts;
+  vector<int> new_amounts;
+  cout << process_transaction(tx, &new_accounts, &new_amounts) << endl;
+  cout << new_amounts.size() << endl;
+  cout << new_amounts << endl;
+  cout << new_accounts << endl;
+
+  cout << bytes_to_bech32(new_accounts[0]) << endl;
+  
+  // **** Send message
   Socket sock(ZMQ_REQ, constr.c_str());
   //WriteMessage hello_message;
   //xauto hello_builder = hello_message.builder<Hello>();
@@ -121,83 +152,6 @@ int main(int argc, char **argv) {
 
   
 
-  //vector<SignKeyPair> accounts(3);
   
-  
-  /*  Bytes message(10);
-  Curve::inst().random_bytes(message);
-  SignedMessage sign_message(message, kp.priv);
-
-  for (int i(0); i < 50000; ++i) {
-    sign_message.verify(kp.pub);
-    //cout << sign_message.verify(kp.pub) << endl;
-    }*/
-
-  
-  /*::capnp::MallocMessageBuilder cap_message;
-
-  auto builder = cap_message.initRoot<Transaction>();
-
-  ::capnp::MallocMessageBuilder credit_message;
-  auto credit_set_builder = credit_message.initRoot<CreditSet>();
-  auto credit_builder = credit_set_builder.initCredits(3);
-  credit_builder[0].setAccount(accounts[0].pub.kjp());
-  credit_builder[0].setAmount(-10);
-
-  credit_builder[1].setAccount(accounts[1].pub.kjp());
-  credit_builder[1].setAmount(-14);
-
-  credit_builder[2].setAccount(accounts[2].pub.kjp());
-  credit_builder[2].setAmount(24);
-
-  auto credit_data = messageToFlatArray(credit_message).asBytes();
-  Bytes test(credit_data.begin(), credit_data.size());
-
-  //encrypt/authenticate and decrypt test
-
-  KeyPair kp1, kp2;
-  EncryptedMessage enc_message(test, kp2.pub, kp1.priv);
-  cout << enc_message.message << endl;
-  cout << enc_message.enc_message << endl;
-  cout << enc_message.nonce << endl;
-
-  Hash hash(enc_message.enc_message);
-  cout << "hash: " << hash.hash << endl;
-  
-  EncryptedMessage dec_message(enc_message.enc_message);
-  cout << dec_message.decrypt(kp1.pub, kp2.priv, enc_message.nonce) << endl;
-  cout << dec_message.message << endl;
-  
-  
-  //sign and verify test
-  SignedMessage credit_signed(test, accounts[0].priv);
-  cout << credit_signed.message << endl;
-  cout << credit_signed.signed_message << endl;
-  
-  SignedMessage tmp(credit_signed.signed_message);
-  cout << tmp.verify(accounts[0].pub) << endl;
-  cout << "encrypt priv:" << kp1.priv << endl;
-  cout << kp1.pub << endl;
-  cout << "sign priv:" << accounts[0].priv << endl;
-  cout << accounts[0].pub << endl;
-  auto sig_builder = builder.initSignatures(3);
-
-  auto data = messageToFlatArray(cap_message).asBytes();
-  //auto data = flat_array.asBytes();
-  for (auto d : data)
-    cout << d;
-  cout << endl;
-      /*while (true) {
-      vector<Bytes> msg = sock.recv_multi();
-
-      for (auto m : msg)
-      cout << m << " ";
-      cout << endl;
-      //auto addrresp = bytes_to_t<AddrResponse>(msg[2]);
-      //for (auto addr : addrresp.addresses())
-      //  cout << addr << endl;
-      sock.send_multi(msg);
-      }*/
-
   return 0;
 }

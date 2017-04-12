@@ -6,10 +6,13 @@
 
 #include "type.h"
 #include "err.h"
+#include "segwit_addr.h"
 
 #include <capnp/message.h>
 #include <capnp/serialize.h>
 #include <capnp/serialize-packed.h>
+
+#include <string>
 
 using namespace std;
 
@@ -94,6 +97,41 @@ inline Bytes cap_to_bytes(T &t) {
   memcpy(&bytes[0], &buf[0], buf.size());
   return buf;
 };
+
+std::string bytes_to_bech32(Bytes &b) {
+  //cout << int(b[0]) << endl;
+  if (b.size() == 0) return "";
+  Bytes enc5;
+
+  size_t l(0), r(5);
+  size_t n(b[0]);
+  size_t last(0);
+  while (true) {
+    size_t idl(l / 8), idr(r / 8);
+    if (idl >= b.size()) break;
+    if (idr != last && idr < b.size()) {
+      n += int(b[idr]) << (5 - r % 8);
+      last = idr;
+    }
+    int val = n % (1 << 5);
+    enc5.push_back(val);
+    //cout << val << endl;
+    
+    n >>= 5;
+    l += 5; r += 5;
+  }
+
+
+  cout << enc5 << endl;
+  
+  std::string bla("bla");
+  
+  int sl(5);
+  std::string s(bla.size() + enc5.size() + 8, ' ');
+  bech32_encode(&s[0], &bla[0], &enc5[0], enc5.size());
+  
+  return s;
+}
 
 
 
