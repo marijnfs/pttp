@@ -62,16 +62,21 @@ struct OK {
        message @0 :Text;
 }
 
+struct GetPeers {
+
+}
+
 struct IpList {
-       ips @0 :List(Data);
+       ips @0 :List(Text);
 }
 
 struct Message {
        content :union {
        	       hello @0 :Hello;
 	       welcome @1 :Welcome;
-	       iplist @2 :IpList;
-	       ok @3 :OK;
-	       transaction @4 :Transaction;
+	       getPeers @2 :GetPeers;
+	       ipList @3 :IpList;
+	       ok @4 :OK;
+	       transaction @5 :Transaction;
        }
 }

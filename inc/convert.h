@@ -98,7 +98,7 @@ inline Bytes cap_to_bytes(T &t) {
   return buf;
 };
 
-std::string bytes_to_bech32(Bytes &b) {
+inline std::string bytes_to_bech32(std::string pre, Bytes &b) {
   //cout << int(b[0]) << endl;
   if (b.size() == 0) return "";
   Bytes enc5;
@@ -122,13 +122,9 @@ std::string bytes_to_bech32(Bytes &b) {
   }
 
 
-  cout << enc5 << endl;
-  
-  std::string bla("bla");
-  
   int sl(5);
-  std::string s(bla.size() + enc5.size() + 8, ' ');
-  bech32_encode(&s[0], &bla[0], &enc5[0], enc5.size());
+  std::string s(pre.size() + enc5.size() + 8, ' ');
+  bech32_encode(&s[0], &pre[0], &enc5[0], enc5.size());
   
   return s;
 }

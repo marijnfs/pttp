@@ -16,7 +16,9 @@
 #include "socket.h"
 #include "curve.h"
 
+#include "util.h"
 #include "convert.h"
+#include "process.h"
 #include "messages.capnp.h"
 
 using namespace std;
@@ -50,7 +52,9 @@ int main(int argc, char **argv) {
   };
 
 
-  
+  set<string> ip_list;
+  ip_list.insert("asdf");
+  ip_list.insert("asdfasdf");
   map<string, int> utxo;
   
   while (true) {
@@ -87,10 +91,29 @@ int main(int argc, char **argv) {
 	  
 	  break;
       }
+      case Message::Content::GET_PEERS: {
+	auto iplist_builder = content_builder.initIpList();
+	auto iplist = iplist_builder.initIps(ip_list.size());
+	int n(0);
+	vector<Bytes> ip_bytes;
+	for (auto ip : ip_list) {
+	  ip_bytes.push_back(ip);
+	  cout << ip << endl;
+	  iplist.set(n++, const_cast<char*>(ip.c_str()));
+	}
+
+	break;
+      }
+	
       case Message::Content::TRANSACTION: {
 	//process transaction
-	auto tx = content.getTransaction();
-	auto data = tx.getCreditSet();
+	  vector<PublicSignKey> accounts;
+	  vector<int> amounts;
+	  
+	  auto tx = content.getTransaction();
+	  if (!process_transaction(tx, &accounts, &amounts))
+	    cout << "fail" << endl;
+	  cout << amounts << endl;
 
 	break;
       }
