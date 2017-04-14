@@ -69,7 +69,22 @@ void mine() {
 }
 
 int main(int argc, char **argv) {
-  //mine();
+
+  DB test("test.db");
+  Bytes r(300);
+  Curve::inst().random_bytes(r);
+  Hash h(r);
+  test.put(h, r);
+
+  Bytes n;
+  cout << test.get(h, &n) << endl;
+  cout << n << endl;
+
+  test.del(h);
+  Bytes n2;
+  cout << test.get(h, &n2) << endl;
+  cout << n2 << endl;
+//mine();
   assert(argc > 1);
   string constr(argv[1]);
   
