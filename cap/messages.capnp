@@ -60,6 +60,10 @@ struct OK {
        message @0 :Text;
 }
 
+struct Reject {
+       message @0 :Text;
+}
+
 struct GetPeers {
 
 }
@@ -75,6 +79,8 @@ struct Message {
 	       getPeers @2 :GetPeers;
 	       ipList @3 :IpList;
 	       ok @4 :OK;
-	       transaction @5 :Transaction;
+	       reject @5 :Reject;
+	       transaction @6 :Transaction;
+	       block @7 :Block;
        }
 }

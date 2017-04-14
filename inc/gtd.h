@@ -24,6 +24,7 @@ struct Task {
 
 Task(TaskType type_) : type(type_), time(0){}
 Task(TaskType type_, std::time_t time_) : type(type_), time(time_){}
+Task(TaskType type_, Bytes &b, std::time_t time_) : type(type_), data(b), time(time_){}
 };
 
 bool operator<(Task const&l, Task const &r) {

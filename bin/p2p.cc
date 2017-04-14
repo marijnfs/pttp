@@ -101,12 +101,14 @@ void manage_connection(Connection *con) {
   }
 }
 
+vector<Connection*> connections;
+
 void manage() {
   GTD gtd;
   gtd.add(Task{REQ_IPS}, std::chrono::milliseconds(0));
   //Socket sock(ZMQ_ROUTER, constr.c_str());
   
-  vector<Connection*> connections;
+
   vector<std::thread> threads;
   
   while (true) {
@@ -187,9 +189,12 @@ void mine() {
     builder.setNonce(rnd.kjp());
     auto b = msg.bytes();
     HardHash hard_hash(b);
-    if (hard_hash[0] == 0) {
+    if (hard_hash[0] == 0 && hard_hash[1] == 0) {
       cout << n << ": [" << b << "] " << endl;
       cout << hard_hash << endl;
+      for (auto con : connections) {
+	con->gtd.add(Task{SENDPRIORITY, b, 0});
+      }
     }
     n++;
   }
@@ -268,20 +273,30 @@ int main(int argc, char **argv) {
 	for (auto ip : ip_list) {
 	  iplist.set(n++, const_cast<char*>(ip.c_str()));
 	}
-
+	content_builder.initOk();
 	break;
       }
-	
+      case Message::Content::BLOCK: {
+	HardHash hard_hash(msg[2]);
+	if (hard_hash[0] == 0 && hard_hash[1] == 0) {
+	  content_builder.initOk();
+	} else
+	  content_builder.initReject();
+	break;
+      }
       case Message::Content::TRANSACTION: {
 	//process transaction
 	vector<PublicSignKey> accounts;
 	vector<int> amounts;
 	  
 	auto tx = content.getTransaction();
-	if (!process_transaction(tx, &accounts, &amounts))
+	if (process_transaction(tx, &accounts, &amounts)) {
+	  content_builder.initOk();
+	  cout << amounts << endl;
+	} else {
+	  content_builder.initReject();
 	  cout << "fail" << endl;
-	cout << amounts << endl;
-
+	}
 	break;
       }
       default: {
