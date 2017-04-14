@@ -38,10 +38,10 @@ file(GLOB CAPNP_HDRS_2 ${CMAKE_CURRENT_SOURCE_DIR}/cap/*.h)
 file(GLOB CPP_HEADERS inc/*.h)
 
 add_executable(node ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS_2} ${CAPNP_HDRS_2} bin/node.cc)
-target_link_libraries(node ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb)
+target_link_libraries(node ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb -lpthread)
 
 add_executable(p2p ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS_2} ${CAPNP_HDRS_2} bin/p2p.cc)
-target_link_libraries(p2p ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb)
+target_link_libraries(p2p ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb -lpthread)
 
 #add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS} ${CAPNP_HDRS} bin/nodetest.cc)
 #target_link_libraries(nodetest ${CAPNP_LIBRARIES} -lzmq -lsodium)
