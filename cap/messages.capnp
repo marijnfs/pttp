@@ -82,5 +82,6 @@ struct Message {
 	       reject @5 :Reject;
 	       transaction @6 :Transaction;
 	       block @7 :Block;
+	       text @8 :Text;
        }
 }

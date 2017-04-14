@@ -24,7 +24,7 @@ struct Task {
 
 Task(TaskType type_) : type(type_), time(0){}
 Task(TaskType type_, std::time_t time_) : type(type_), time(time_){}
-Task(TaskType type_, Bytes &b, std::time_t time_) : type(type_), data(b), time(time_){}
+Task(TaskType type_, Bytes &b, std::time_t time_ = 0) : type(type_), data(b), time(time_){}
 };
 
 bool operator<(Task const&l, Task const &r) {
@@ -33,8 +33,14 @@ bool operator<(Task const&l, Task const &r) {
   return l.time < r.time;
 }
 
+bool operator>(Task const&l, Task const &r) {
+  if (l.time == r.time)
+    return l.type > r.type;
+  return l.time > r.time;
+}
+
 struct GTD {
-  std::priority_queue<Task> q;
+  std::priority_queue<Task, std::vector<Task>, std::greater<Task> > q;
   std::mutex m;
   
   Task operator()() {
@@ -53,6 +59,10 @@ struct GTD {
     }
   }
 
+  void operator()(Task task) {
+    add(task);
+  }
+  
   void add(Task task) {
     task.time = 0;
     std::lock_guard<std::mutex> lock(m);
