@@ -80,6 +80,25 @@ struct HashKey : public SafeBytes {
   HashKey();
 };
 
+struct Hash : public Bytes {
+  Hash(Bytes &m);
+  Hash(Bytes &m, int nbytes);
+  
+  Hash(Bytes &m, HashKey &k);
+};
+
+struct HardHashSalt : public Bytes {
+  HardHashSalt();
+};
+
+const int HARD_HASH = 32;
+
+struct HardHash : public Bytes {
+  HardHash(Bytes &m, HardHashSalt &salt);
+  HardHash(Bytes &m);  
+};
+ 
+
 struct KeyPair {
   SecretKey priv;
   PublicKey pub;
@@ -96,13 +115,6 @@ struct SignKeyPair {
 
 
 
-struct Hash {
-  Bytes hash;
-  
-  Hash(Bytes &m);
-  
-  Hash(Bytes &m, HashKey &k);
-};
 
 struct EncryptedMessage {
   SafeBytes message, enc_message;

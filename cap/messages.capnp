@@ -36,21 +36,19 @@ struct Transaction {
 }
 
 struct Block {
-       hash @0 :Data;
+       prevHash @0 :Data;
        transactionHash @1 :Data;
        utxoHash @2 :Data;
-       prevHash @3 :Data;
-       salt @4 :Data;
-       time @5 :UInt64;
+       nonce @3 :Data;
+       time @4 :UInt64;
 }
 
 struct TransactionSet {
       transactions @0 :List(Transaction);
 }
 
-
 struct Hello {
-       pub @0 :Data;
+       ip @0 :Text;
        port @1 :Int16;
 }
 

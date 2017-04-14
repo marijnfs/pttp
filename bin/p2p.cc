@@ -20,6 +20,7 @@
 #include "convert.h"
 #include "process.h"
 #include "messages.capnp.h"
+#include "db.h"
 
 using namespace std;
 
@@ -36,7 +37,39 @@ struct Node {
   
 };
 
+Bytes get_current_transaction_hash() {
+  
+}
+
+void mine() {
+  int n(0);
+  while (true) {
+    WriteMessage msg;
+    auto builder = msg.builder<Block>();
+    
+    Bytes rnd(32);
+    Curve::inst().random_bytes(rnd);
+    Hash hash(rnd);
+    
+    builder.setPrevHash(hash.kjp());
+    builder.setTransactionHash(hash.kjp());
+    builder.setUtxoHash(hash.kjp());
+    builder.setTime(124);
+    Curve::inst().random_bytes(rnd);
+    
+    builder.setNonce(rnd.kjp());
+    auto b = msg.bytes();
+    HardHash hard_hash(b);
+    if (hard_hash[0] == 0) {
+      cout << n << ": [" << b << "] " << endl;
+      cout << hard_hash << endl;
+    }
+    n++;
+  }
+}
+
 int main(int argc, char **argv) {
+  //mine();
   assert(argc > 1);
   string constr(argv[1]);
   

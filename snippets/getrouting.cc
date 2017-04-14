@@ -1,10 +1,3 @@
-> Destination     Gateway         Interface       Source
-> 0.0.0.0         192.168.0.1     eth1            *.*.*.*
->                                 ^^^^^ here it is!
-> 127.0.0.0       *.*.*.*         lo              *.*.*.*
-> ...
-
-
 #include <asm/types.h>
 #include <netinet/ether.h>
 #include <netinet/in.h>

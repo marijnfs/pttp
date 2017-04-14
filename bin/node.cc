@@ -35,7 +35,12 @@ int main(int argc, char **argv) {
 
   cout << "priv: " << bytes_to_bech32("pv", accounts[0].priv) << endl;
   Bytes tx = create_transaction(accounts, amounts);
-
+  cout << "sdf" << endl;
+  
+  Hash hash(tx);
+  cout << "hash: " << hash << endl;
+  HardHash hardhash(tx);
+  cout << "hardhash: " << hardhash << endl;
   
   vector<PublicSignKey> new_accounts;
   vector<int> new_amounts;
@@ -57,6 +62,7 @@ int main(int argc, char **argv) {
     
     auto builder = message.builder<Message>();
     auto hello_builder = builder.getContent().initHello();
+    hello_builder.setIp("sdfasdf");
     hello_builder.setPort(120);
     
     Bytes data = message.bytes();

@@ -109,16 +109,45 @@ SignKeyPair::SignKeyPair() {
   crypto_sign_keypair(&pub[0], &priv[0]);
 }
 
-
-Hash::Hash(Bytes &m) : hash(crypto_generichash_BYTES) {
-  crypto_generichash(&hash[0], hash.size(),
+Hash::Hash(Bytes &m, int nbytes) : ::Bytes(nbytes) {
+  crypto_generichash(ptr<unsigned char*>(), size(),
 		     &m[0], m.size(), NULL, 0);
 }
 
-Hash::Hash(Bytes &m, HashKey &k) : hash(crypto_generichash_BYTES) {
-  crypto_generichash(&hash[0], hash.size(),
+Hash::Hash(Bytes &m) : ::Bytes(crypto_generichash_BYTES) {
+  crypto_generichash(ptr<unsigned char*>(), size(),
+  		     &m[0], m.size(), NULL, 0);
+}
+
+Hash::Hash(Bytes &m, HashKey &k) : ::Bytes(crypto_generichash_BYTES) {
+  crypto_generichash(ptr<unsigned char*>(), size(),
 		     &m[0], m.size(), &k[0], k.size());
 }
+
+HardHashSalt::HardHashSalt() : Bytes(crypto_pwhash_SALTBYTES) {
+  Curve::inst().random_bytes(*this);
+}
+
+HardHash::HardHash(Bytes &m, HardHashSalt &salt) : Bytes(32) {
+  cout << size() << endl;
+  crypto_pwhash(ptr<unsigned char*>(), size(),
+		m.ptr<char*>(), m.size(),
+		salt.ptr<unsigned char*>(),
+		crypto_pwhash_OPSLIMIT_INTERACTIVE,
+		crypto_pwhash_MEMLIMIT_INTERACTIVE,
+		crypto_pwhash_ALG_DEFAULT);
+}
+
+HardHash::HardHash(Bytes &m) : Bytes(32) {
+  Hash salt(m, crypto_pwhash_SALTBYTES); //create salt by hashing data
+    crypto_pwhash(this->ptr<unsigned char*>(), size(),
+		  m.ptr<char*>(), m.size(),
+		  salt.ptr<unsigned char*>(),
+		  crypto_pwhash_OPSLIMIT_INTERACTIVE,
+		  crypto_pwhash_MEMLIMIT_INTERACTIVE,
+		  crypto_pwhash_ALG_DEFAULT);
+  }
+
 
 
 EncryptedMessage::EncryptedMessage(Bytes &message_, PublicKey &pub, SecretKey &priv) : message(message_), enc_message(message_.size() + crypto_box_MACBYTES) {  

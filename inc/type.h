@@ -41,7 +41,7 @@ struct Bytes : public std::vector<uint8_t> {
     
  template <typename T>
    T ptr() {
-   return reinterpret_cast<T>(&(this[0]));
+   return reinterpret_cast<T>(&(*this)[0]);
  }
   
   operator kj::ArrayPtr<kj::byte>() {
