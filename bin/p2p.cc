@@ -26,6 +26,8 @@
 #include "db.h"
 #include "gtd.h"
 
+#include "estimate_outside_ip.h"
+
 using namespace std;
 
 
@@ -201,9 +203,12 @@ void mine() {
 }
 
 void serve() {
+
 }
 
 int main(int argc, char **argv) {
+  cout << "my ip: " << estimate_outside_ip() << endl;
+
   DB test("test.db");
   Bytes r(300);
   Curve::inst().random_bytes(r);
@@ -245,7 +250,7 @@ int main(int argc, char **argv) {
     ReadMessage message(msg[2]);
     auto reader = message.root<Message>();
     //cout << "port: " << b.getPort() << endl;
-      
+ 
     auto content = reader.getContent();
 
     WriteMessage response_msg;
