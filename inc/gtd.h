@@ -8,19 +8,22 @@
 #include <ctime>
 #include <chrono>
 
-
 enum TaskType {
   SENDPRIORITY = 0,
   SEND = 1,
-  SYNC_UTXO  = 2,
-  EXPAND_CONNECTION = 3,
-  REQ_IPS
+  HELLO = 2,
+  SYNC_UTXO  = 3,
+  EXPAND_CONNECTION = 4,
+  REQ_IPS = 5
 };
 
 struct Task {
   TaskType type;
   Bytes data;
   std::time_t time;
+
+Task(TaskType type_) : type(type_), time(0){}
+Task(TaskType type_, std::time_t time_) : type(type_), time(time_){}
 };
 
 bool operator<(Task const&l, Task const &r) {
@@ -50,6 +53,7 @@ struct GTD {
   }
 
   void add(Task task) {
+    task.time = 0;
     std::lock_guard<std::mutex> lock(m);
     q.push(task);
   }

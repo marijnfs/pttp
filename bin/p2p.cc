@@ -47,26 +47,63 @@ struct Connection {
   Connection(std::string addr) : sock(ZMQ_REQ, addr.c_str()), ip(addr) {}
 };
 
+std::string my_ip;
+
+std::mutex ip_list_mutex;
 set<string> ip_list;
 
 void manage_connection(Connection *con) {
+  con->gtd.add(Task(HELLO));
+  
   while (true) {
     auto task = con->gtd();
 
     switch (task.type)
       {
-      case SEND: {
+      case HELLO: {
+	WriteMessage msg;
+	auto b = msg.builder<Message>();
+	auto h = b.getContent().initHello();
+	h.setIp(my_ip);
+	auto data = msg.bytes();
+	con->sock.send(data);
+	auto result = con->sock.recv();
+	break;
+      }
+      case SEND:
+      case SENDPRIORITY : {
 	con->sock.send(task.data);
 	auto result = con->sock.recv();
-	
+	break;
       }
+      case REQ_IPS:
+	WriteMessage msg;
+	auto b = msg.builder<Message>();
+	b.getContent().initGetPeers();
+	auto data = msg.bytes();
+	con->sock.send(data);
+	auto result = con->sock.recv();
+	
+	ReadMessage in_msg(result);
+	auto msg_reader = in_msg.root<Message>();
+	auto new_ip_list = msg_reader.getContent().getIpList();
+	auto new_ips = new_ip_list.getIps();
+	{
+	  std::lock_guard<std::mutex> lock(ip_list_mutex);
+	  for (size_t n(0); n < new_ips.size(); ++n) {
+	    ip_list.insert(new_ips[n]);
+	    cout << new_ips[n].cStr() << endl;
+	  }
+	    
+	}
+	break;
       }
   }
 }
 
 void manage() {
   GTD gtd;
-  
+  gtd.add(Task{REQ_IPS}, std::chrono::milliseconds(0));
   //Socket sock(ZMQ_ROUTER, constr.c_str());
   
   vector<Connection*> connections;
@@ -179,6 +216,7 @@ int main(int argc, char **argv) {
   //mine();
   assert(argc > 1);
   string constr(argv[1]);
+  my_ip = constr;
   
   Socket sock(ZMQ_ROUTER, constr.c_str());
 
@@ -214,7 +252,9 @@ int main(int argc, char **argv) {
       {
       case Message::Content::HELLO: {
 	auto hello = content.getHello();
-	cout << "hello " << hello.getPort() << endl;
+	cout << "hello " << hello.getIp().cStr() << endl;
+	std::lock_guard<std::mutex> lock(ip_list_mutex);
+	ip_list.insert(hello.getIp());
 	auto wc = content_builder.initWelcome();
       
 	break;
@@ -223,10 +263,9 @@ int main(int argc, char **argv) {
 	auto iplist_builder = content_builder.initIpList();
 	auto iplist = iplist_builder.initIps(ip_list.size());
 	int n(0);
-	vector<Bytes> ip_bytes;
+
+	std::lock_guard<std::mutex> lock(ip_list_mutex);
 	for (auto ip : ip_list) {
-	  ip_bytes.push_back(ip);
-	  cout << ip << endl;
 	  iplist.set(n++, const_cast<char*>(ip.c_str()));
 	}
 
