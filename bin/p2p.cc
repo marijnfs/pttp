@@ -67,10 +67,22 @@ struct SetReconsiler {
   void filter(std::set<Bytes> &set) {
     current_set.clear();
 
-    for (auto &s : set)
-      for (auto &f : filters)
-	if (f.has(const_cast<Bytes&>(s)))
-	  current_set.push_back(const_cast<Bytes*>(&s));
+    cout << "N: " << N << endl;
+    cout << "n filters: " << filters.size() << endl;
+    cout << "latest set:" << endl;
+    for (auto &s : set) {
+      bool inset(true);
+      for (auto &f : filters) {
+	if (!f.has(const_cast<Bytes&>(s))) {
+	  inset = false;
+	  break;
+	}
+      }
+      if (inset) {
+	current_set.push_back(const_cast<Bytes*>(&s));
+	cout << s << endl;
+      }
+    }
   }
 
   bool check_hash() {
@@ -81,6 +93,7 @@ struct SetReconsiler {
     
     sort(current_set.begin(), current_set.end(), [](Bytes *l, Bytes *r){return *l < *r;});
     auto current_hash = hash_vec(current_set);
+    cout << "hashes: " << current_set << " " << hash << endl;
     return hash == current_hash;
   }
 };
@@ -117,11 +130,16 @@ void mine() {
   }
 }
 
+GTD manager_gtd;
+
 void read_lines() {
   while (true) {
     string line;
     getline(cin, line);
     cout << "[" << line << "]" << endl;
+    if (line.find("go") != string::npos)
+      manager_gtd.add(Task(SYNC_HASHSET));
+      
     WriteMessage msg;
     auto msg_b = msg.builder<Message>();
     msg_b.getContent().setText(line);
@@ -184,6 +202,7 @@ void manage_connection(Connection *con) {
 	}
       case REQ_HASHSET_FILTER:
 	{
+	  cout << "req hash filter: " << endl;
 	  Bytes req_hash = task.data;
 	  
 	  WriteMessage msg;
@@ -206,6 +225,9 @@ void manage_connection(Connection *con) {
 	  Bytes bloom_bytes(bloom_data.begin(), bloom_data.end());
 	  
 	  auto p = bloom_read.getP();
+	  cout << "p: " << p  << endl;
+	  if (p == 0) //no filter
+	    break;
 	  auto key = bloom_read.getHashKey();
 	  Bytes key_bytes(key.begin(), key.end());
 	  
@@ -217,6 +239,7 @@ void manage_connection(Connection *con) {
 	}
       case REQ_HASHSET:
 	{
+	  cout << "req hash filter: " << endl;
 	  Bytes req_hash = task.data;
 	  
 	  WriteMessage msg;
@@ -243,7 +266,7 @@ void manage_connection(Connection *con) {
 	  auto content = msg_reader.getContent();
 	  assert(content.which() == Message::Content::HASHSET);
 	  auto hashset = content.getHashset().getSet();
-
+	  cout << "got set: " << hashset.size() << endl;
 	  std::lock_guard<std::mutex> lock(set_mutex);
 	  for (auto h : hashset) {
 	    Bytes b(h.begin(), h.end());
@@ -257,16 +280,13 @@ void manage_connection(Connection *con) {
 
 
 void manage() {
-  GTD gtd;
-  gtd.add(Task{REQ_IPS}, std::chrono::seconds(4));
-  gtd.add(Task{EXPAND_CONNECTION}, std::chrono::seconds(1));
+  manager_gtd.add(Task{REQ_IPS}, std::chrono::seconds(4));
+  manager_gtd.add(Task{EXPAND_CONNECTION}, std::chrono::seconds(1));
   //Socket sock(ZMQ_ROUTER, constr.c_str());
-  cout << "n task: " << gtd.q.size() << endl;
-  cout << gtd.q.top().time << " " << (gtd.q.top().type == REQ_IPS) << endl;
   vector<std::thread> threads;
   
   while (true) {
-    Task task = gtd();
+    Task task = manager_gtd();
     switch (task.type)
       {
       case SYNC_HASHSET:
@@ -274,20 +294,25 @@ void manage() {
 	  std::lock_guard<std::mutex> lock(set_mutex);
 	  Bytes hash = task.data;
 	  reconsiler.hash = hash;
-	  if (reconsiler.N == 0)
+	  if (reconsiler.check_hash()) {
+	    cout << "DONE" << endl;
+	    break;
+	  }
+	  if (reconsiler.filters.size() == 0)
 	    for (auto &con : connections)
 	      con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
 	  else {
 	    reconsiler.filter(full_set);
-	    if (!reconsiler.check_hash()) {
-	      if (reconsiler.current_set.size() < reconsiler.N) {
+	    
+	    if (reconsiler.current_set.size() < reconsiler.N) {
+	      for (auto &con : connections)
 		con->gtd.add(Task(REQ_HASHSET, reconsiler.hash));
-	      } else {
+	    } else {
+	      for (auto &con : connections)
 		con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
-	      }
-		
+	    }
 	  }
-	  gtd.add(task, std::chrono::seconds(3));
+	  manager_gtd.add(task, std::chrono::seconds(3));
 	  break;
 	}
 
@@ -300,7 +325,7 @@ void manage() {
 	}
 	
 	//plan next expand
-	gtd.add(task, std::chrono::seconds(10));
+	manager_gtd.add(task, std::chrono::seconds(10));
 	break;
       }
 
@@ -345,7 +370,7 @@ void manage() {
 	}
 	
 	//plan next expand
-	gtd.add(task, std::chrono::seconds(20));
+	manager_gtd.add(task, std::chrono::seconds(20));
 	break;
       }
 
@@ -362,20 +387,17 @@ void serve() {
 int main(int argc, char **argv) {
   cout << "my ip: " << estimate_outside_ip() << endl;
 
-  vector<Bytes> bs;
   for (int i(0); i < 10; ++i) {
-    bs.push_back(Bytes(10));
-    Curve::inst().random_bytes(last(bs));
+    Bytes b(10);
+    Curve::inst().random_bytes(b);
+    full_set.insert(b);
   }
-  
-  for (int i(0); i < 5; ++i) {
-    reconsiler.current_set.push_back(&bs[i]);
-  }
-  reconsiler.check_hash();
+
+  cout << "fullset: " << endl;
+  for (auto s : full_set)
+    cout << s << endl;
   
     
-  Bloom bloom(4999); //prime
-  
   assert(argc > 1);
   string constr(argv[1]);
   my_ip = constr;
@@ -395,11 +417,10 @@ int main(int argc, char **argv) {
   while (true) {
     vector<Bytes> msg = sock.recv_multi();
       
-    for (auto m : msg)
+    /*for (auto m : msg)
       cout << m << " ";
-    cout << endl;
-    cout << "nmsg: " << msg.size() << endl;
-
+      cout << endl;*/
+    
     //kj::ArrayInputStream ais(msg[2].kjp());
     //::capnp::InputStreamMessageReader reader(ais);
 
@@ -429,7 +450,7 @@ int main(int argc, char **argv) {
 	auto iplist_builder = content_builder.initIpList();
 	auto iplist = iplist_builder.initIps(ip_list.size());
 	int n(0);
-
+	
 	std::lock_guard<std::mutex> lock(ip_list_mutex);
 	for (auto ip : ip_list) {
 	  iplist.set(n++, const_cast<char*>(ip.c_str()));
@@ -469,7 +490,52 @@ int main(int argc, char **argv) {
 	    con->gtd(Task(SEND, msg[2]));
 	}
 	content_builder.initOk();
-	break;	  
+	break;
+      }
+      case Message::Content::REQ_HASHSET_FILTER: {
+	cout << "got req hashset filter" << endl;
+	auto filter_b = content_builder.initHashsetFilter();
+	Bloom bloom(4999);
+
+	std::lock_guard<std::mutex> lock(set_mutex);
+	for (auto s : full_set)
+	  bloom.set(s);
+	filter_b.setN(full_set.size());
+	auto bloom_builder = filter_b.initBloom();
+	Bytes bloom_bytes = bloom.bytes(); ///Shady, gets destroyed before message is sent
+	bloom_builder.setP(bloom.P);
+	bloom_builder.setHashKey(bloom.key.kjp());
+	bloom_builder.setData(bloom_bytes.kjp());
+	
+	break;
+      }
+      case Message::Content::REQ_HASHSET: {
+	cout << "got req hashset" << endl;
+	auto req_reader = content.getReqHashset();
+	auto hash = req_reader.getHash();
+	auto bloom_read = req_reader.getBloom();
+	auto bloom_data = bloom_read.getData();
+	Bytes bloom_bytes(bloom_data.begin(), bloom_data.end());
+	  
+	auto p = bloom_read.getP();
+	if (p == 0) //no filter
+	  break;
+	auto key = bloom_read.getHashKey();
+	Bytes key_bytes(key.begin(), key.end());
+	Bloom bloom(bloom_bytes, p, key_bytes);
+	
+	std::lock_guard<std::mutex> lock(set_mutex);
+	
+	vector<Bytes*> bs;
+	for (auto &s : full_set)
+	  if (!bloom.has(const_cast<Bytes&>(s)))
+	    bs.push_back(const_cast<Bytes*>(&s));//s.kjp()
+	
+	auto hash_set = content_builder.initHashset().initSet(bs.size());
+	for (int i(0); i < bs.size(); ++i)
+	  hash_set.set(i, bs[i]->kjp());
+	     
+	break;
       }
       default: {
 	cout << "default" << endl;
