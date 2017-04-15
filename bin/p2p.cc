@@ -277,6 +277,16 @@ void manage() {
 	  if (reconsiler.N == 0)
 	    for (auto &con : connections)
 	      con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
+	  else {
+	    reconsiler.filter(full_set);
+	    if (!reconsiler.check_hash()) {
+	      if (reconsiler.current_set.size() < reconsiler.N) {
+		con->gtd.add(Task(REQ_HASHSET, reconsiler.hash));
+	      } else {
+		con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
+	      }
+		
+	  }
 	  gtd.add(task, std::chrono::seconds(3));
 	  break;
 	}
