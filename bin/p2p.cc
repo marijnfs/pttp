@@ -387,8 +387,8 @@ void serve() {
 int main(int argc, char **argv) {
   
   Socket stream_sock(ZMQ_STREAM, argv[1]);
-  Socket req_sock(ZMQ_REQ, argv[2]);
   if (argc == 3) {
+    Socket req_sock(ZMQ_REQ, argv[2]);
     Bytes msg;
     req_sock.send(msg);
     auto b = req_sock.recv();
