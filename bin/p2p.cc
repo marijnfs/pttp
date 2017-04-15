@@ -93,7 +93,7 @@ struct SetReconsiler {
     
     sort(current_set.begin(), current_set.end(), [](Bytes *l, Bytes *r){return *l < *r;});
     auto current_hash = hash_vec(current_set);
-    cout << "hashes: " << current_set << " " << hash << endl;
+    cout << "hashes: " << current_hash << " " << hash << endl;
     return hash == current_hash;
   }
 };
@@ -385,9 +385,22 @@ void serve() {
 }
 
 int main(int argc, char **argv) {
+  
+  Socket stream_sock(ZMQ_STREAM, argv[1]);
+  Socket req_sock(ZMQ_REQ, argv[2]);
+  if (argc == 3) {
+    Bytes msg;
+    req_sock.send(msg);
+    auto b = req_sock.recv();
+    cout << b << endl;
+  }
+  auto res = stream_sock.recv();
+  cout << res << endl;
+  return 0;
+  
   cout << "my ip: " << estimate_outside_ip() << endl;
 
-  for (int i(0); i < 10; ++i) {
+  for (int i(0); i < 3000; ++i) {
     Bytes b(10);
     Curve::inst().random_bytes(b);
     full_set.insert(b);
