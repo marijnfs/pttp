@@ -25,6 +25,7 @@
 #include "messages.capnp.h"
 #include "db.h"
 #include "gtd.h"
+#include "bloom_filter.h"
 
 #include "estimate_outside_ip.h"
 
@@ -225,6 +226,41 @@ void read_lines() {
   }
 }
 
+Bytes hash_twin(Bytes* b1, Bytes *b2) {
+  Bytes b(b1->size() + b2->size());
+  copy(b1->begin(), b1->end(), b.begin());
+  copy(b2->begin(), b2->end(), next(b.begin(), b1->size()));
+  Hash h(b);
+  return h;
+}
+
+
+Bytes hash_vec(vector<Bytes*> &hash_set) {
+  assert(hash_set.size() > 0);
+
+  vector<Bytes> hashes;
+  cout << hash_set.size() << endl;
+  for (int n(0); n < hash_set.size(); n += 2) {
+    if (n == hash_set.size() - 1)
+      hashes.push_back(hash_twin(hash_set[n], hash_set[n]));
+    else
+      hashes.push_back(hash_twin(hash_set[n], hash_set[n+1]));
+  }
+
+  while (hashes.size() > 1) {
+        vector<Bytes> new_hashes;
+    for (int n(0); n < hashes.size(); n += 2) {
+      if (n == hashes.size() - 1)
+	new_hashes.push_back(hash_twin(&hashes[n], &hashes[n]));
+      else
+	new_hashes.push_back(hash_twin(&hashes[n], &hashes[n+1]));
+    }
+    hashes = new_hashes;
+  }
+
+  return hashes[0];
+}
+
 void serve() {
 
 }
@@ -232,6 +268,43 @@ void serve() {
 int main(int argc, char **argv) {
   cout << "my ip: " << estimate_outside_ip() << endl;
 
+  Bytes b(10);
+  Curve::inst().random_bytes(b);
+	      
+  //Bloom bloom(4999); //prime
+    Bloom bloom(23); //prime
+  bloom.has(b);
+
+
+  vector<Bytes> hash_set;
+  vector<Bytes*> pointer_bytes;
+    
+  for (size_t n(0); n < 1000; ++n) {
+    Bytes b(10);
+    Curve::inst().random_bytes(b);
+    
+    hash_set.push_back(b);
+  }
+
+  for (size_t n(0); n < hash_set.size(); ++n)
+    pointer_bytes.push_back(&hash_set[n]);
+  
+  cout << "hash vec: " << hash_vec(pointer_bytes) << endl;
+
+  bloom.set(hash_set[3]);
+  bloom.set(hash_set[7]);
+  Bytes backup = bloom.bytes();
+  Bloom bloom2(backup, bloom.P, bloom.key);
+  Bytes backup2 = bloom2.bytes();
+  cout << backup << endl;
+  cout << backup2 << endl;
+  for (int n(0); n < hash_set.size(); ++n) {
+    if (bloom.has(hash_set[n]))
+      cout << "1:" << n << endl;
+    if (bloom2.has(hash_set[n]))
+      cout << "2:" << n << endl;
+  }
+  
   assert(argc > 1);
   string constr(argv[1]);
   my_ip = constr;

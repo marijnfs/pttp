@@ -97,7 +97,22 @@ struct HardHash : public Bytes {
   HardHash(Bytes &m, HardHashSalt &salt);
   HardHash(Bytes &m);  
 };
- 
+
+struct ShortHashKey : public Bytes {
+ ShortHashKey() : ::Bytes(crypto_shorthash_KEYBYTES) {
+    Curve::inst().random_bytes(*this);
+  }
+};
+
+struct ShortHash : public Bytes {
+ ShortHash(ShortHashKey &key, Bytes &b) : ::Bytes(crypto_shorthash_BYTES) {
+    crypto_shorthash(ptr<unsigned char*>(), b.ptr<unsigned char*>(), b.size(), key.ptr<unsigned char*>());
+  }
+
+  void reset() {
+    Curve::inst().random_bytes(*this);
+  }
+};
 
 struct KeyPair {
   SecretKey priv;
