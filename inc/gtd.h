@@ -14,7 +14,10 @@ enum TaskType {
   HELLO = 2,
   SYNC_UTXO  = 3,
   EXPAND_CONNECTION = 4,
-  REQ_IPS = 5
+  REQ_IPS = 5,
+  REQ_HASHSET_FILTER = 6,
+  REQ_HASHSET = 7,
+  SYNC_HASHSET = 8
 };
 
 struct Task {

@@ -19,11 +19,8 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_) {
   int n(0);
   int idx(0);
   for (bool bit : hits) {
-    cout << int(data[idx]) << endl;
-    cout << int(data[idx]) << " " << (1 << (7 - n)) <<  " " << (int(data[idx]) & (1 << (7 - n))) << endl;
     hits[i] = data[idx] & (1 << (7 - n));
-    cout << hits[i] << endl;
-    
+        
     ++i;++n;
     if (n == 8) {
       ++idx;

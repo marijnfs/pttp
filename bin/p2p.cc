@@ -42,12 +42,96 @@ struct Connection {
   }
 };
 
+vector<Connection*> connections;
+const int N_CONN(8);
+
 std::string my_ip;
 
-std::mutex ip_list_mutex;
+
 set<string> ip_list;
+std::mutex ip_list_mutex;
 
 set<Bytes> seen;
+
+set<Bytes> full_set;
+std::mutex set_mutex;
+
+struct SetReconsiler {
+  Bytes hash;
+  size_t N;
+  vector<Bloom> filters;
+  vector<Bytes*> current_set;
+
+  SetReconsiler() : N(0) {}
+  
+  void filter(std::set<Bytes> &set) {
+    current_set.clear();
+
+    for (auto &s : set)
+      for (auto &f : filters)
+	if (f.has(const_cast<Bytes&>(s)))
+	  current_set.push_back(const_cast<Bytes*>(&s));
+  }
+
+  bool check_hash() {
+    if (current_set.size() == 0) {
+      cout << "empty" << endl;
+      return false;
+    }
+    
+    sort(current_set.begin(), current_set.end(), [](Bytes *l, Bytes *r){return *l < *r;});
+    auto current_hash = hash_vec(current_set);
+    return hash == current_hash;
+  }
+};
+
+SetReconsiler reconsiler;
+
+void mine() {
+  int n(0);
+  while (true) {
+    WriteMessage msg;
+    auto builder = msg.builder<Block>();
+    
+    Bytes rnd(32);
+    Curve::inst().random_bytes(rnd);
+    Hash hash(rnd);
+    
+    builder.setPrevHash(hash.kjp());
+    builder.setTransactionHash(hash.kjp());
+    builder.setUtxoHash(hash.kjp());
+    builder.setTime(124);
+    Curve::inst().random_bytes(rnd);
+    
+    builder.setNonce(rnd.kjp());
+    auto b = msg.bytes();
+    HardHash hard_hash(b);
+    if (hard_hash[0] == 0 && hard_hash[1] == 0) {
+      cout << n << ": [" << b << "] " << endl;
+      cout << hard_hash << endl;
+      for (auto con : connections) {
+	con->gtd.add(Task{SENDPRIORITY, b, 0});
+      }
+    }
+    n++;
+  }
+}
+
+void read_lines() {
+  while (true) {
+    string line;
+    getline(cin, line);
+    cout << "[" << line << "]" << endl;
+    WriteMessage msg;
+    auto msg_b = msg.builder<Message>();
+    msg_b.getContent().setText(line);
+    for (auto con : connections) {
+      auto b = msg.bytes();
+      con->gtd(Task(SEND, b));
+    }
+  }
+}
+
 
 void manage_connection(Connection *con) {
   con->gtd.add(Task(HELLO));
@@ -98,12 +182,79 @@ void manage_connection(Connection *con) {
 	  }
 	  break;
 	}
+      case REQ_HASHSET_FILTER:
+	{
+	  Bytes req_hash = task.data;
+	  
+	  WriteMessage msg;
+	  auto b = msg.builder<Message>();
+	  auto reqhashset_builder = b.getContent().initReqHashsetFilter();
+	  reqhashset_builder.setHash(req_hash.kjp());
+
+	  auto data = msg.bytes();
+	  con->sock.send(data);
+	  auto result = con->sock.recv();
+	  
+	  ReadMessage in_msg(result);
+	  auto msg_reader = in_msg.root<Message>();
+	  auto content = msg_reader.getContent();
+	  assert(content.which() == Message::Content::HASHSET_FILTER);
+	  auto filter = content.getHashsetFilter();
+	  int n = filter.getN();
+	  auto bloom_read = filter.getBloom();
+	  auto bloom_data = bloom_read.getData();
+	  Bytes bloom_bytes(bloom_data.begin(), bloom_data.end());
+	  
+	  auto p = bloom_read.getP();
+	  auto key = bloom_read.getHashKey();
+	  Bytes key_bytes(key.begin(), key.end());
+	  
+	  std::lock_guard<std::mutex> lock(set_mutex);
+	  reconsiler.N = n;
+	  reconsiler.filters.push_back(Bloom(bloom_bytes, int(p), key_bytes));
+
+	  break;
+	}
+      case REQ_HASHSET:
+	{
+	  Bytes req_hash = task.data;
+	  
+	  WriteMessage msg;
+	  auto b = msg.builder<Message>();
+	  auto reqhashset_builder = b.getContent().initReqHashset();
+	  reqhashset_builder.setHash(req_hash.kjp());
+	  auto bloom_builder = reqhashset_builder.initBloom();
+
+	  //make filter of what we have
+	  Bloom bloom(4999);
+	  for (auto h : full_set)
+	    bloom.set(h);
+	  Bytes bloom_bytes = bloom.bytes();
+	  bloom_builder.setP(bloom.P);
+	  bloom_builder.setHashKey(bloom.key.kjp());
+	  bloom_builder.setData(bloom_bytes.kjp());
+
+	  auto data = msg.bytes();
+	  con->sock.send(data);
+	  auto result = con->sock.recv();
+	  
+	  ReadMessage in_msg(result);
+	  auto msg_reader = in_msg.root<Message>();
+	  auto content = msg_reader.getContent();
+	  assert(content.which() == Message::Content::HASHSET);
+	  auto hashset = content.getHashset().getSet();
+
+	  std::lock_guard<std::mutex> lock(set_mutex);
+	  for (auto h : hashset) {
+	    Bytes b(h.begin(), h.end());
+	    full_set.insert(b);
+	  }
+	  break;
+	}
       }
   }
 }
 
-vector<Connection*> connections;
-const int N_CONN(8);
 
 void manage() {
   GTD gtd;
@@ -118,6 +269,18 @@ void manage() {
     Task task = gtd();
     switch (task.type)
       {
+      case SYNC_HASHSET:
+	{
+	  std::lock_guard<std::mutex> lock(set_mutex);
+	  Bytes hash = task.data;
+	  reconsiler.hash = hash;
+	  if (reconsiler.N == 0)
+	    for (auto &con : connections)
+	      con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
+	  gtd.add(task, std::chrono::seconds(3));
+	  break;
+	}
+
       case REQ_IPS: {
 	cout << "req" << endl;
 	//inspect current connections, close if needed
@@ -181,85 +344,6 @@ void manage() {
 }
   
 
-void mine() {
-  int n(0);
-  while (true) {
-    WriteMessage msg;
-    auto builder = msg.builder<Block>();
-    
-    Bytes rnd(32);
-    Curve::inst().random_bytes(rnd);
-    Hash hash(rnd);
-    
-    builder.setPrevHash(hash.kjp());
-    builder.setTransactionHash(hash.kjp());
-    builder.setUtxoHash(hash.kjp());
-    builder.setTime(124);
-    Curve::inst().random_bytes(rnd);
-    
-    builder.setNonce(rnd.kjp());
-    auto b = msg.bytes();
-    HardHash hard_hash(b);
-    if (hard_hash[0] == 0 && hard_hash[1] == 0) {
-      cout << n << ": [" << b << "] " << endl;
-      cout << hard_hash << endl;
-      for (auto con : connections) {
-	con->gtd.add(Task{SENDPRIORITY, b, 0});
-      }
-    }
-    n++;
-  }
-}
-
-void read_lines() {
-  while (true) {
-    string line;
-    getline(cin, line);
-    cout << "[" << line << "]" << endl;
-    WriteMessage msg;
-    auto msg_b = msg.builder<Message>();
-    msg_b.getContent().setText(line);
-    for (auto con : connections) {
-      auto b = msg.bytes();
-      con->gtd(Task(SEND, b));
-    }
-  }
-}
-
-Bytes hash_twin(Bytes* b1, Bytes *b2) {
-  Bytes b(b1->size() + b2->size());
-  copy(b1->begin(), b1->end(), b.begin());
-  copy(b2->begin(), b2->end(), next(b.begin(), b1->size()));
-  Hash h(b);
-  return h;
-}
-
-
-Bytes hash_vec(vector<Bytes*> &hash_set) {
-  assert(hash_set.size() > 0);
-
-  vector<Bytes> hashes;
-  cout << hash_set.size() << endl;
-  for (int n(0); n < hash_set.size(); n += 2) {
-    if (n == hash_set.size() - 1)
-      hashes.push_back(hash_twin(hash_set[n], hash_set[n]));
-    else
-      hashes.push_back(hash_twin(hash_set[n], hash_set[n+1]));
-  }
-
-  while (hashes.size() > 1) {
-        vector<Bytes> new_hashes;
-    for (int n(0); n < hashes.size(); n += 2) {
-      if (n == hashes.size() - 1)
-	new_hashes.push_back(hash_twin(&hashes[n], &hashes[n]));
-      else
-	new_hashes.push_back(hash_twin(&hashes[n], &hashes[n+1]));
-    }
-    hashes = new_hashes;
-  }
-
-  return hashes[0];
-}
 
 void serve() {
 
@@ -268,42 +352,19 @@ void serve() {
 int main(int argc, char **argv) {
   cout << "my ip: " << estimate_outside_ip() << endl;
 
-  Bytes b(10);
-  Curve::inst().random_bytes(b);
-	      
-  //Bloom bloom(4999); //prime
-    Bloom bloom(23); //prime
-  bloom.has(b);
-
-
-  vector<Bytes> hash_set;
-  vector<Bytes*> pointer_bytes;
-    
-  for (size_t n(0); n < 1000; ++n) {
-    Bytes b(10);
-    Curve::inst().random_bytes(b);
-    
-    hash_set.push_back(b);
+  vector<Bytes> bs;
+  for (int i(0); i < 10; ++i) {
+    bs.push_back(Bytes(10));
+    Curve::inst().random_bytes(last(bs));
   }
-
-  for (size_t n(0); n < hash_set.size(); ++n)
-    pointer_bytes.push_back(&hash_set[n]);
   
-  cout << "hash vec: " << hash_vec(pointer_bytes) << endl;
-
-  bloom.set(hash_set[3]);
-  bloom.set(hash_set[7]);
-  Bytes backup = bloom.bytes();
-  Bloom bloom2(backup, bloom.P, bloom.key);
-  Bytes backup2 = bloom2.bytes();
-  cout << backup << endl;
-  cout << backup2 << endl;
-  for (int n(0); n < hash_set.size(); ++n) {
-    if (bloom.has(hash_set[n]))
-      cout << "1:" << n << endl;
-    if (bloom2.has(hash_set[n]))
-      cout << "2:" << n << endl;
+  for (int i(0); i < 5; ++i) {
+    reconsiler.current_set.push_back(&bs[i]);
   }
+  reconsiler.check_hash();
+  
+    
+  Bloom bloom(4999); //prime
   
   assert(argc > 1);
   string constr(argv[1]);

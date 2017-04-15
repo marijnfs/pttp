@@ -99,14 +99,15 @@ struct HardHash : public Bytes {
 };
 
 struct ShortHashKey : public Bytes {
+ ShortHashKey(Bytes &b) : ::Bytes(b) {}
  ShortHashKey() : ::Bytes(crypto_shorthash_KEYBYTES) {
     Curve::inst().random_bytes(*this);
   }
 };
 
 struct ShortHash : public Bytes {
- ShortHash(ShortHashKey &key, Bytes &b) : ::Bytes(crypto_shorthash_BYTES) {
-    crypto_shorthash(ptr<unsigned char*>(), b.ptr<unsigned char*>(), b.size(), key.ptr<unsigned char*>());
+ ShortHash(ShortHashKey &key, Bytes &b) : ::Bytes(crypto_shorthash_BYTES) {    
+    crypto_shorthash(ptr<unsigned char*>(), b.ptr<unsigned char *const>(), b.size(), key.ptr<unsigned char const*>());
   }
 
   void reset() {
@@ -175,6 +176,41 @@ struct Signature {
   bool verify(Bytes &message, PublicSignKey &pub);
 };
 
+
+inline Bytes hash_twin(Bytes* b1, Bytes *b2) {
+  Bytes b(b1->size() + b2->size());
+  copy(b1->begin(), b1->end(), b.begin());
+  copy(b2->begin(), b2->end(), next(b.begin(), b1->size()));
+  Hash h(b);
+  return h;
+}
+
+
+inline Bytes hash_vec(std::vector<Bytes*> &hash_set) {
+  assert(hash_set.size() > 0);
+
+  std::vector<Bytes> hashes;
+  
+  for (int n(0); n < hash_set.size(); n += 2) {
+    if (n == hash_set.size() - 1)
+      hashes.push_back(hash_twin(hash_set[n], hash_set[n]));
+    else
+      hashes.push_back(hash_twin(hash_set[n], hash_set[n+1]));
+  }
+
+  while (hashes.size() > 1) {
+    std::vector<Bytes> new_hashes;
+    for (int n(0); n < hashes.size(); n += 2) {
+      if (n == hashes.size() - 1)
+	new_hashes.push_back(hash_twin(&hashes[n], &hashes[n]));
+      else
+	new_hashes.push_back(hash_twin(&hashes[n], &hashes[n+1]));
+    }
+    hashes = new_hashes;
+  }
+
+  return hashes[0];
+}
 
 
 

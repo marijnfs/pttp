@@ -24,7 +24,7 @@ endif()
 
 
 #set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
-set(CMAKE_CXX_FLAGS "-std=c++14 -g")
+set(CMAKE_CXX_FLAGS "-std=c++14 -g -fpermissive")
 
 include_directories(
     inc

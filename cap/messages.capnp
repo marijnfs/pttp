@@ -72,6 +72,30 @@ struct IpList {
        ips @0 :List(Text);
 }
 
+struct BloomSet {
+       p @0 :UInt32;
+       data @1 :Data;
+       hashKey @2 :Data;
+}
+
+struct ReqHashset {
+       hash @0 :Data; #specific hash set, could be a general id
+       bloom @1  :BloomSet;
+}
+
+struct Hashset {
+       set @0 :List(Data);
+}
+
+struct ReqHashsetFilter {
+       hash @0 :Data; #specific hash set, could be a general id
+}
+
+struct HashsetFilter {
+       n @0 :UInt64; #size of set
+       bloom @1 :BloomSet;
+}
+
 struct Message {
        content :union {
        	       hello @0 :Hello;
@@ -83,5 +107,9 @@ struct Message {
 	       transaction @6 :Transaction;
 	       block @7 :Block;
 	       text @8 :Text;
-       }
+	       reqHashset @9 :ReqHashset;	
+	       hashset @10 :Hashset;
+	       reqHashsetFilter @11 :ReqHashsetFilter;
+	       hashsetFilter @12 :HashsetFilter;	       
+      }
 }
