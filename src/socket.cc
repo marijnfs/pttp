@@ -7,19 +7,21 @@ Context *Context::s = 0;
 
 
 Socket::Socket(int type_, string addr_) : type(type_), addr(addr_), sock(0) {
+  connect(type_, addr_, type == ZMQ_REP || type == ZMQ_PUB || type == ZMQ_ROUTER || type == ZMQ_DEALER);
+}
+
+Socket::Socket(int type_, string addr_, bool bind) : type(type_), addr(addr_), sock(0) {
+  connect(type_, addr_, bind);
+}
+
+void Socket::connect(int type, string addr, bool bind) {
   sock = zmq_socket(Context::inst().ctx, type);
   assertthrow(sock, ZMQErr("Couldnt create socket"));
 
-  if (type == ZMQ_REP || type == ZMQ_PUB || type == ZMQ_ROUTER || type == ZMQ_DEALER) {
+  if (bind) {
     cout << "binding to " << addr << endl;
     assertthrow(zmq_bind(sock, addr.c_str()) != -1, ZMQErr("couldn't connect"));
   } else {
-    if (type == ZMQ_REQ) {
-      //assertthrow( zmq_setsockopt(sock, ZMQ_IDENTITY, "123", 3) != -1, ZMQErr("Couldnt set identity") );
-      //int one(1);
-      //assertthrow( zmq_setsockopt(sock, ZMQ_IMMEDIATE, &one, sizeof(one)) != -1, ZMQErr("Could set immediate"));
-    }
-
     cout << "connecting to " << addr << endl;
     assertthrow(zmq_connect(sock, addr.c_str()) != -1, ZMQErr("couldn't connect"));
   }

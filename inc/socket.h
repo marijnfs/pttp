@@ -13,9 +13,12 @@
 
 struct Socket {
   Socket(int type_, std::string addr_);
+  Socket(int type_, std::string addr_, bool bind);
   ~Socket();
-  void send(Bytes &data, bool more = false);
 
+  void connect(int type, std::string addr, bool bind);
+  
+  void send(Bytes &data, bool more = false);
   Bytes recv();
 
   void send_multi(std::vector<Bytes> &data);

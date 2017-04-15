@@ -386,14 +386,17 @@ void serve() {
 
 int main(int argc, char **argv) {
   
-  Socket stream_sock(ZMQ_STREAM, argv[1]);
   if (argc == 3) {
-    Socket req_sock(ZMQ_REQ, argv[2]);
+    Socket req_sock(ZMQ_REQ, argv[2], false);
+    cout << req_sock.get_id() << endl;
     Bytes msg;
     req_sock.send(msg);
     auto b = req_sock.recv();
     cout << b << endl;
   }
+  
+  Socket stream_sock(ZMQ_STREAM, argv[1], true);
+  cout << stream_sock.get_id() << endl;
   auto res = stream_sock.recv();
   cout << res << endl;
   return 0;
