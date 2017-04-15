@@ -106,6 +106,15 @@ void Socket::subscribe(string pref) {
   zmq_setsockopt (sock, ZMQ_SUBSCRIBE, pref.c_str(), pref.size());
 }
 
+string Socket::get_id() {
+  string name(255, ' ');
+  size_t len(name.size());
+  zmq_getsockopt(sock, ZMQ_IDENTITY, &name[0], &len);
+  cout << len << endl;
+  cout << name.substr(0, len) << endl;
+  return name;
+}
+
 Context::Context() : ctx(0) {
   init();
 }

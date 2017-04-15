@@ -24,6 +24,7 @@ struct Socket {
 
   
   void subscribe(std::string pref);
+  std::string get_id();
   
   std::string addr;
   int type;
