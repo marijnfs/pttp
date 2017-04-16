@@ -9,12 +9,6 @@ struct RelTimeLockedCredit {
        time @1 :UInt64;
 }
 
-struct Account {
-       version @0 :UInt32;
-       data @1 :Data;
-}
-
-	
 struct Witness {
        type @0 :UInt32; #for now refers to credit set signed, 0 = first, 1 = first+second, etc. To allow for fee increases etc.
        data @1 :Data;
@@ -22,7 +16,7 @@ struct Witness {
 
 struct Credit {
        account @0 :Data;
-       amount @1 :UInt64;
+       amount @1 :Int64;
 }
 
 struct CreditSet {

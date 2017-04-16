@@ -383,82 +383,122 @@ void manage() {
   }
 }
 
-struct BlockHeader {
-  Bytes hash;
-  Bytes prev_hash, tx_hash, utxo_hash;
-  Bytes nonce;
-  uint64_t T;
-
-  void from_bytes(Bytes &b) {
-    ReadMessage msg(b);
-    auto block_r = msg.root<Block>();
-
-    hash = block_r.getPrevHash();
-    tx_hash = block_r.getTransactionHash();
-    utxo_hash = block_r.getUtxoHash();
-    nonce = block_r.getNonce();
-    T = block_r.getTime();
-  }
-
-  Bytes bytes() {
-    WriteMessage msg;
-    auto builder = msg.builder<Block>();
-    
-    Bytes rnd(32);
-    Curve::inst().random_bytes(rnd);
-    Hash hash(rnd);
-    
-    builder.setPrevHash(prev_hash.kjp());
-    builder.setTransactionHash(tx_hash.kjp());
-    builder.setUtxoHash(utxo_hash.kjp());
-    builder.setTime(T);
-    
-    builder.setNonce(nonce.kjp());
-    return msg.bytes();
-  }
+namespace pttp {
+  struct Account {
+    Bytes pub;
+    int64_t amount;
+    Bytes commitment;
+  };
   
-  Bytes calculate_hash() {
-    Bytes b = bytes();
-    return Hash(b);
-  }		      
-};
+  
+  struct Credit {
+    Bytes pub;
+    int64_t amount;
+  };
+  
+  
+  struct Transaction {
+    vector<Credit> credits;
+    vector<Bytes> signatures;
 
-struct BlockChain {
-  map<Bytes, BlockHeader*> blocks;
-  
-  set<Bytes> new_hashes;
-  set<Bytes> selected_hashes;
-  
-  map<Bytes, Bytes*> txs;
-  
-  map<Bytes, std::vector<Bytes>> hash_sets;
-  std::mutex chain_mutex;
-
-  vector<Bytes> mempool;
-  
-  void add(Bytes data) {
-    Hash hash(data);
-    if (!txs.count(hash)) {
-      txs[hash] = new Bytes(data);
-      new_hashes.insert(hash);
+    Bytes credit_bytes() {
+      WriteMessage credit_message;
+      auto credit_set_builder = credit_message.builder<CreditSet>();
+      auto credit_set = credit_set_builder.initCredits(credits.size());
+      
+      for (int i(0); i < credits.size(); ++i) {
+	//credit_builder[i].setAccount((kj::ArrayPtr<kj::byte>)accounts[i].pub);
+	credit_set[i].setAccount(credits[i].pub.kjp());
+	credit_set[i].setAmount(credits[i].amount);
+      }
+      
+      auto credit_data = credit_message.bytes();
+      return credit_data;
     }
-  }
-
-  Bytes get_latest() {
-    vector<Bytes*> latest_set;
-    vector<Bytes> latest_set_hashes;
-    map<Bytes, std::vector<Bytes>>::iterator it = hash_sets.begin(), it_end = hash_sets.end();
-    std::lock_guard<std::mutex> lock(chain_mutex);
-    for (; it != it_end; ++it) {
-      latest_set_hashes.push_back(it->first);
-      latest_set.push_back(const_cast<Bytes*>(&(it->first)));
+    
+  };
+  
+  
+  struct BlockHeader {
+    Bytes hash;
+    Bytes prev_hash, tx_hash, utxo_hash;
+    Bytes nonce;
+    uint64_t T;
+    
+    void from_bytes(Bytes &b) {
+      ReadMessage msg(b);
+      auto block_r = msg.root<Block>();
+      
+      hash = block_r.getPrevHash();
+      tx_hash = block_r.getTransactionHash();
+      utxo_hash = block_r.getUtxoHash();
+      nonce = block_r.getNonce();
+      T = block_r.getTime();
     }
-    Bytes hash = hash_vec(latest_set);
-    hash_sets[hash] = latest_set_hashes;
-    return hash;
-  }
-};
-
+    
+    Bytes bytes() {
+      WriteMessage msg;
+      auto builder = msg.builder<Block>();
+      
+      Bytes rnd(32);
+      Curve::inst().random_bytes(rnd);
+      Hash hash(rnd);
+      
+      builder.setPrevHash(prev_hash.kjp());
+      builder.setTransactionHash(tx_hash.kjp());
+      builder.setUtxoHash(utxo_hash.kjp());
+      builder.setTime(T);
+      
+      builder.setNonce(nonce.kjp());
+      return msg.bytes();
+    }
+    
+    Bytes calculate_hash() {
+      Bytes b = bytes();
+      return Hash(b);
+    }		      
+  };
+  
+  struct BlockChain {
+    map<Bytes, BlockHeader*> blocks;
+    
+    set<Bytes> new_hashes;
+    set<Bytes> selected_hashes;
+    
+    map<Bytes, Bytes*> txs;
+    
+    map<Bytes, std::vector<Bytes>> hash_sets;
+    std::mutex chain_mutex;
+    
+    vector<Bytes> mempool;
+    
+    void add(Bytes data) {
+      Hash hash(data);
+      if (!txs.count(hash)) {
+	txs[hash] = new Bytes(data);
+	new_hashes.insert(hash);
+      }
+    }
+    
+    Bytes get_latest() {
+      vector<Bytes*> latest_set;
+      vector<Bytes> latest_set_hashes;
+      map<Bytes, std::vector<Bytes>>::iterator it = hash_sets.begin(), it_end = hash_sets.end();
+      std::lock_guard<std::mutex> lock(chain_mutex);
+      for (; it != it_end; ++it) {
+	latest_set_hashes.push_back(it->first);
+	latest_set.push_back(const_cast<Bytes*>(&(it->first)));
+      }
+      Bytes hash = hash_vec(latest_set);
+      hash_sets[hash] = latest_set_hashes;
+      return hash;
+    }
+    
+    void add_block(BlockHeader &header) {
+      
+    }
+  };
+}
 
 
 void serve(string con_str) {
@@ -626,5 +666,6 @@ int main(int argc, char **argv) {
   serve_thread.join();
   manage_thread.join();
   readline_thread.join();
+  
   return 0;
 }
