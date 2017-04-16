@@ -15,7 +15,9 @@ Socket::Socket(int type_, string addr_, bool bind) : type(type_), addr(addr_), s
 }
 
 void Socket::connect(int type, string addr, bool bind) {
+  cout << "right about" << endl;
   sock = zmq_socket(Context::inst().ctx, type);
+  cout << "nnjeaah" << endl;
   assertthrow(sock, ZMQErr("Couldnt create socket"));
 
   if (bind) {

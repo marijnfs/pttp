@@ -114,6 +114,7 @@ void mine() {
     builder.setTransactionHash(hash.kjp());
     builder.setUtxoHash(hash.kjp());
     builder.setTime(124);
+    
     Curve::inst().random_bytes(rnd);
     
     builder.setNonce(rnd.kjp());
@@ -377,68 +378,90 @@ void manage() {
      }
   }
 }
-  
 
+struct BlockHeader {
+  Bytes hash;
+  Bytes prev_hash, tx_hash, utxo_hash;
+  Bytes nonce;
+  uint64_t T;
 
-void serve() {
+  void from_bytes(Bytes &b) {
+    ReadMessage msg(b);
+    auto block_r = msg.root<Block>();
 
-}
-
-int main(int argc, char **argv) {
-  
-  if (argc == 3) {
-    Socket req_sock(ZMQ_REQ, argv[2], false);
-    cout << req_sock.get_id() << endl;
-    Bytes msg;
-    req_sock.send(msg);
-    auto b = req_sock.recv();
-    cout << b << endl;
-  }
-  
-  Socket stream_sock(ZMQ_STREAM, argv[1], true);
-  cout << stream_sock.get_id() << endl;
-  auto res = stream_sock.recv();
-  cout << res << endl;
-  return 0;
-  
-  cout << "my ip: " << estimate_outside_ip() << endl;
-
-  for (int i(0); i < 3000; ++i) {
-    Bytes b(10);
-    Curve::inst().random_bytes(b);
-    full_set.insert(b);
+    hash = block_r.getPrevHash();
+    tx_hash = block_r.getTransactionHash();
+    utxo_hash = block_r.getUtxoHash();
+    nonce = block_r.getNonce();
+    T = block_r.getTime();
   }
 
-  cout << "fullset: " << endl;
-  for (auto s : full_set)
-    cout << s << endl;
-  
+  Bytes bytes() {
+    WriteMessage msg;
+    auto builder = msg.builder<Block>();
     
-  assert(argc > 1);
-  string constr(argv[1]);
-  my_ip = constr;
-
-  for (int n(2); n < argc; ++n)
-    ip_list.insert(argv[n]);
+    Bytes rnd(32);
+    Curve::inst().random_bytes(rnd);
+    Hash hash(rnd);
+    
+    builder.setPrevHash(prev_hash.kjp());
+    builder.setTransactionHash(tx_hash.kjp());
+    builder.setUtxoHash(utxo_hash.kjp());
+    builder.setTime(T);
+    
+    builder.setNonce(nonce.kjp());
+    return msg.bytes();
+  }
   
-  Socket sock(ZMQ_ROUTER, constr.c_str());
+  Bytes calculate_hash() {
+    Bytes b = bytes();
+    return Hash(b);
+  }		      
+};
 
-  set<string> ips;  
-  map<string, int> utxo;
+struct BlockChain {
+  map<Bytes, BlockHeader*> blocks;
+  
+  set<Bytes> new_hashes;
+  set<Bytes> selected_hashes;
+  
+  map<Bytes, Bytes*> txs;
+  
+  map<Bytes, std::vector<Bytes>> hash_sets;
+  std::mutex chain_mutex;
 
-  thread manage_thread(manage);
-  //thread mine_thread(mine);
-  thread readline_thread(read_lines);
+  vector<Bytes> mempool;
+  
+  void add(Bytes data) {
+    Hash hash(data);
+    if (!txs.count(hash)) {
+      txs[hash] = new Bytes(data);
+      new_hashes.insert(hash);
+    }
+  }
+
+  Bytes get_latest() {
+    vector<Bytes*> latest_set;
+    vector<Bytes> latest_set_hashes;
+    map<Bytes, std::vector<Bytes>>::iterator it = hash_sets.begin(), it_end = hash_sets.end();
+    std::lock_guard<std::mutex> lock(chain_mutex);
+    for (; it != it_end; ++it) {
+      latest_set_hashes.push_back(it->first);
+      latest_set.push_back(const_cast<Bytes*>(&(it->first)));
+    }
+    Bytes hash = hash_vec(latest_set);
+    hash_sets[hash] = latest_set_hashes;
+    return hash;
+  }
+};
+
+
+
+void serve(string con_str) {
+  Socket sock(ZMQ_ROUTER, con_str.c_str());
 
   while (true) {
     vector<Bytes> msg = sock.recv_multi();
-      
-    /*for (auto m : msg)
-      cout << m << " ";
-      cout << endl;*/
-    
-    //kj::ArrayInputStream ais(msg[2].kjp());
-    //::capnp::InputStreamMessageReader reader(ais);
 
     ReadMessage message(msg[2]);
     auto reader = message.root<Message>();
@@ -566,6 +589,56 @@ int main(int argc, char **argv) {
     //  cout << addr << endl;
     sock.send_multi(msg);
   }
+}
 
+
+int main(int argc, char **argv) {
+  if (argc == 3) {
+    Socket req_sock(ZMQ_REQ, argv[2], false);
+    //cout << req_sock.last_ep() << endl;
+    cout << req_sock.get_id() << endl;
+    Bytes msg;
+    req_sock.send(msg);
+    auto b = req_sock.recv();
+    cout << b << endl;
+  }
+  
+  Socket stream_sock(ZMQ_STREAM, argv[1], true);
+  cout << stream_sock.get_id() << endl;
+  
+
+  auto res = stream_sock.recv();
+  cout << res << endl;
+  return 0;
+
+  cout << "my ip: " << estimate_outside_ip() << endl;
+
+ 
+  for (int i(0); i < 3000; ++i) {
+    Bytes b(10);
+    Curve::inst().random_bytes(b);
+    full_set.insert(b);
+  }
+
+  cout << "fullset: " << endl;
+  for (auto s : full_set)
+    cout << s << endl;
+  
+    
+  assert(argc > 1);
+  string con_str(argv[1]);
+  my_ip = con_str;
+
+  for (int n(2); n < argc; ++n)
+    ip_list.insert(argv[n]);
+
+  thread manage_thread(manage);
+  //thread mine_thread(mine);
+  thread readline_thread(read_lines);
+  thread serve_thread(serve, con_str);
+
+  serve_thread.join();
+  manage_thread.join();
+  readline_thread.join();
   return 0;
 }

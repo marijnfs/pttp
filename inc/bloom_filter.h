@@ -10,11 +10,12 @@ struct Bloom {
   int P;
   std::vector<bool> hits;
   ShortHashKey key;
+  int n_on;
   
-Bloom(int p) : P(p), hits(p)  {
+Bloom(int p) : P(p), hits(p), n_on(0)  {
 }
   
-Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_) {
+Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_), n_on(0) {
   int i(0);
   int n(0);
   int idx(0);
@@ -32,6 +33,7 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_) {
   
   void reset() {
     std::fill(hits.begin(), hits.end(), false);
+    n_on = 0;
   }
 
   uint64_t hash(Bytes &b) {
@@ -51,6 +53,7 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_) {
 
   bool set(Bytes &b) {
     uint64_t val = hash(b);
+    if (!hits[val]) ++n_on;
     hits[val] = true;
   }
 
@@ -58,6 +61,7 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_) {
     uint64_t val = hash(b);
     bool has = hits[val];
     hits[val] = true;
+    if (!has) ++n_on;
     return has;
   }
 
