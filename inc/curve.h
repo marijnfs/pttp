@@ -13,7 +13,6 @@ struct Curve {
   
   Curve();
   static Curve &inst();
-
   static Curve *s_curve;
 
   bool bytes_equal(Bytes &b1, Bytes &b2);
@@ -26,6 +25,10 @@ struct Curve {
   
   void increment(Bytes &b);
 };
+
+inline void random_bytes(Bytes &b) {
+  Curve::inst().random_bytes(b);
+}
 
 struct SafeBytes : public Bytes {
   SafeBytes();

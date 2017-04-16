@@ -60,7 +60,7 @@ bool process_transaction(Bytes &b, vector<PublicSignKey> *accounts, vector<int> 
   return process_transaction(tx, accounts, amounts);
 }
 
-bool process_transaction(::Transaction::Reader &tx, std::vector<PublicSignKey> *accounts, std::vector<int> *amounts) {  //only verifies internal witnesses
+bool process_transaction(::Transaction::Reader &tx, std::vector<PublicSignKey> *accounts, std::vector<int> *amounts, std::vector<Signature> *sigs) {  //only verifies internal witnesses
   auto credit_set = tx.getCreditSet();
   Bytes credit_data(credit_set.begin(), credit_set.end());
 
@@ -91,7 +91,11 @@ bool process_transaction(::Transaction::Reader &tx, std::vector<PublicSignKey> *
 
       auto witness_data = witnesses[n_neg].getData();
       Bytes witness(witness_data.begin(), witness_data.end());
+      
       Signature sig(witness);
+      if (sigs)
+	sigs->push_back(sig);
+      
       if (!sig.verify(credit_data, pub_key))
 	return false;
       n_neg++;

@@ -26,7 +26,6 @@ struct CreditSet {
 struct Transaction {
        creditSet @0 :Data; #serialised credit sets so they can be signed
        signatures @1 :List(Witness); #only verify negative credits, can sign the full list or only itself
-       hash @2 :Data; #blake hash of creditsets
 }
 
 struct Block {

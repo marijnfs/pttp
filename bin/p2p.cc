@@ -387,20 +387,66 @@ namespace pttp {
   struct Account {
     Bytes pub;
     int64_t amount;
+    uint64_t signature_count;
     Bytes commitment;
   };
-  
-  
+    
   struct Credit {
     Bytes pub;
     int64_t amount;
   };
   
-  
   struct Transaction {
     vector<Credit> credits;
-    vector<Bytes> signatures;
+    vector<Bytes> witnesses;
 
+    Transaction(Bytes b) {
+      ReadMessage r(b);
+      auto tx = r.root<::Transaction>();
+      auto credit_set = tx.getCreditSet();
+      Bytes credit_data(credit_set.begin(), credit_set.end());
+
+      Hash credit_hash(credit_data);
+      auto hash = tx.getHash();
+      if (Bytes(hash.begin(), hash.end()) != credit_hash)
+	throw "";
+      
+      ReadMessage credit_msg(credit_data);
+      auto credit_reader = credit_msg.root<CreditSet>();
+      auto cap_credits = credit_reader.getCredits();
+      auto cap_witnesses = tx.getSignatures();
+
+
+      //check signatures
+      int n_neg(0);
+      int n = cap_credits.size();
+     
+      credits.resize(n);
+      witnesses.resize(n);
+      for (int i(0); i < n; ++i) {
+	int amount = cap_credits[i].getAmount();
+	credits[i].amount = amount;
+	auto pub = cap_credits[i].getAccount();
+	Bytes pub_bytes(pub.begin(), pub.end());
+	credits[i].pub = pub_bytes;
+	PublicSignKey pub_key(pub_bytes);
+	
+	if (amount < 0) {
+	  if (n_neg >= witnesses.size())
+	    throw "";
+	  
+	  auto witness_data = cap_witnesses[n_neg].getData();
+	  Bytes witness(witness_data.begin(), witness_data.end());
+	  witnesses[n_neg] = witness;
+	  Signature sig(witness);
+	  if (!sig.verify(credit_data, pub_key))
+	    throw "";
+	  n_neg++;
+	}
+      }
+      
+    }
+    
     Bytes credit_bytes() {
       WriteMessage credit_message;
       auto credit_set_builder = credit_message.builder<CreditSet>();
@@ -414,6 +460,20 @@ namespace pttp {
       
       auto credit_data = credit_message.bytes();
       return credit_data;
+    }
+
+    Bytes bytes() {
+      WriteMessage msg;
+      auto tx_b = msg.builder<::Transaction>();
+      auto sig_b = tx_b.initSignatures(witnesses.size());
+      auto cred_data = credit_bytes();
+      for (int n(0); n < witnesses.size(); ++n) {
+	sig_b[n].setType(0);
+	sig_b[n].setData(witnesses[n].kjp());
+	
+      }
+      tx_b.setCreditSet(cred_data.kjp());
+      return msg.bytes();
     }
     
   };
@@ -472,10 +532,11 @@ namespace pttp {
     
     vector<Bytes> mempool;
     
-    void add(Bytes data) {
-      Hash hash(data);
+    void add(Transaction tx) {
+      auto b = tx.bytes();
+      Hash hash(b);
       if (!txs.count(hash)) {
-	txs[hash] = new Bytes(data);
+	txs[hash] = new Bytes(b);
 	new_hashes.insert(hash);
       }
     }

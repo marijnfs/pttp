@@ -11,6 +11,6 @@ bool create_transaction(::Transaction::Builder &transaction_builder, std::vector
 Bytes create_transaction(std::vector<SignKeyPair> &accounts, std::vector<int> &amounts);
 
 bool process_transaction(Bytes &b, std::vector<PublicSignKey> *accounts, std::vector<int> *amounts);  //only verifies internal witnesses
-bool process_transaction(::Transaction::Reader &b, std::vector<PublicSignKey> *accounts, std::vector<int> *amounts);  //only verifies internal witnesses
+bool process_transaction(::Transaction::Reader &b, std::vector<PublicSignKey> *accounts, std::vector<int> *amounts, std::vector<Signature> *sigs = 0);
 
 #endif
