@@ -102,6 +102,7 @@ SetReconsiler reconsiler;
 
 void mine() {
   int n(0);
+
   while (true) {
     WriteMessage msg;
     auto builder = msg.builder<Block>();
@@ -113,14 +114,17 @@ void mine() {
     builder.setPrevHash(hash.kjp());
     builder.setTransactionHash(hash.kjp());
     builder.setUtxoHash(hash.kjp());
-    builder.setTime(124);
+    std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
+    uint64_t ms_uint = ms.count();
+    //cout << ms_uint << endl;
+    builder.setTime(ms_uint);
     
     Curve::inst().random_bytes(rnd);
     
     builder.setNonce(rnd.kjp());
     auto b = msg.bytes();
     HardHash hard_hash(b);
-    if (hard_hash[0] == 0 && hard_hash[1] == 0) {
+    if (hard_hash[0] == 0) {// && hard_hash[1] == 0) {
       cout << n << ": [" << b << "] " << endl;
       cout << hard_hash << endl;
       for (auto con : connections) {
@@ -593,27 +597,9 @@ void serve(string con_str) {
 
 
 int main(int argc, char **argv) {
-  if (argc == 3) {
-    Socket req_sock(ZMQ_REQ, argv[2], false);
-    //cout << req_sock.last_ep() << endl;
-    cout << req_sock.get_id() << endl;
-    Bytes msg;
-    req_sock.send(msg);
-    auto b = req_sock.recv();
-    cout << b << endl;
-  }
-  
-  Socket stream_sock(ZMQ_STREAM, argv[1], true);
-  cout << stream_sock.get_id() << endl;
-  
-
-  auto res = stream_sock.recv();
-  cout << res << endl;
-  return 0;
-
   cout << "my ip: " << estimate_outside_ip() << endl;
 
- 
+  //random filler
   for (int i(0); i < 3000; ++i) {
     Bytes b(10);
     Curve::inst().random_bytes(b);
@@ -633,7 +619,7 @@ int main(int argc, char **argv) {
     ip_list.insert(argv[n]);
 
   thread manage_thread(manage);
-  //thread mine_thread(mine);
+  thread mine_thread(mine);
   thread readline_thread(read_lines);
   thread serve_thread(serve, con_str);
 
