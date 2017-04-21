@@ -41,6 +41,15 @@ int main(int argc, char **argv) {
   cout << "hash: " << hash << endl;
   HardHash hardhash(tx);
   cout << "hardhash: " << hardhash << endl;
+
+  SignKeyPair test_pair;
+  cout << test_pair.pub << endl;
+  cout << "pub: " << bytes_to_bech32("pb", test_pair.pub) << endl;
+  cout << "priv: " << bytes_to_bech32("pv", test_pair.priv) << endl;
+  Bytes pwd("apasswd");
+  HardHash pwd_hash(pwd);
+  SecretKey enc_key;
+  copy(pwd_hash.begin(), pwd_hash.end(), enc_key.begin());
   
   vector<PublicSignKey> new_accounts;
   vector<int> new_amounts;

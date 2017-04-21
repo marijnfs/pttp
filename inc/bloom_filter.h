@@ -46,6 +46,7 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_), n_o
   }
   
   bool has(Bytes &b) {
+    if (P == 0) return false;
     uint64_t val = hash(b);
     
     return hits[val];

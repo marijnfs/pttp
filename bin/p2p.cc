@@ -60,45 +60,50 @@ struct SetReconsiler {
   Bytes hash;
   size_t N;
   vector<Bloom> filters;
-  vector<Bytes*> current_set;
+  vector<Bytes> current_set;
 
-  SetReconsiler() : N(0) {}
+  SetReconsiler(Bytes hash_) : hash(hash_), N(0) {}
   
-  void filter(std::set<Bytes> &set) {
+  void filter(std::vector<Bytes*> set) {
     current_set.clear();
 
     cout << "N: " << N << endl;
     cout << "n filters: " << filters.size() << endl;
     cout << "latest set:" << endl;
+
     for (auto &s : set) {
       bool inset(true);
       for (auto &f : filters) {
-	if (!f.has(const_cast<Bytes&>(s))) {
+	if (!f.has(const_cast<Bytes&>(*s))) {
 	  inset = false;
 	  break;
 	}
       }
       if (inset) {
-	current_set.push_back(const_cast<Bytes*>(&s));
-	cout << s << endl;
+	current_set.push_back(*s);
+	cout << (*s) << endl;
       }
     }
   }
 
-  bool check_hash() {
+  bool check() {
     if (current_set.size() == 0) {
       cout << "empty" << endl;
       return false;
     }
-    
-    sort(current_set.begin(), current_set.end(), [](Bytes *l, Bytes *r){return *l < *r;});
-    auto current_hash = hash_vec(current_set);
+
+    vector<Bytes*> pointer_set(current_set.size());
+    for (int n(0); n < pointer_set.size(); ++n)
+      pointer_set[n] = &current_set[n];
+    sort(pointer_set.begin(), pointer_set.end(), [](Bytes *l, Bytes *r){return *l < *r;});
+    auto current_hash = hash_vec(pointer_set);
     cout << "hashes: " << current_hash << " " << hash << endl;
     return hash == current_hash;
   }
+
+  
 };
 
-SetReconsiler reconsiler;
 
 void mine() {
   int n(0);
@@ -106,22 +111,20 @@ void mine() {
   while (true) {
     WriteMessage msg;
     auto builder = msg.builder<Block>();
-    
-    Bytes rnd(32);
-    Curve::inst().random_bytes(rnd);
-    Hash hash(rnd);
-    
-    builder.setPrevHash(hash.kjp());
-    builder.setTransactionHash(hash.kjp());
-    builder.setUtxoHash(hash.kjp());
+
+    //todo: get right hashes
+    //builder.setPrevHash(hash.kjp());
+    //builder.setTransactionHash(hash.kjp());
+    //builder.setUtxoHash(hash.kjp());
     std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
     uint64_t ms_uint = ms.count();
     //cout << ms_uint << endl;
     builder.setTime(ms_uint);
     
-    Curve::inst().random_bytes(rnd);
-    
+    Bytes rnd(32);
+    random_bytes(rnd);
     builder.setNonce(rnd.kjp());
+
     auto b = msg.bytes();
     HardHash hard_hash(b);
     if (hard_hash[0] == 0) {// && hard_hash[1] == 0) {
@@ -136,6 +139,247 @@ void mine() {
 }
 
 GTD manager_gtd;
+
+
+namespace pttp {
+  struct Account {
+    Bytes pub;
+    int64_t amount;
+    uint64_t signature_count;
+    Bytes commitment;
+  };
+    
+  struct Credit {
+    Bytes pub;
+    int64_t amount;
+  };
+  
+  struct Transaction {
+    vector<Credit> credits;
+    vector<Bytes> witnesses;
+
+    Transaction(Bytes b) {
+      ReadMessage r(b);
+      auto tx = r.root<::Transaction>();
+      auto credit_set = tx.getCreditSet();
+      Bytes credit_data(credit_set.begin(), credit_set.end());
+
+      Hash credit_hash(credit_data);
+            
+      ReadMessage credit_msg(credit_data);
+      auto credit_reader = credit_msg.root<CreditSet>();
+      auto cap_credits = credit_reader.getCredits();
+      auto cap_witnesses = tx.getSignatures();
+
+
+      //check signatures
+      int n_neg(0);
+      int n = cap_credits.size();
+     
+      credits.resize(n);
+      witnesses.resize(n);
+      for (int i(0); i < n; ++i) {
+	int amount = cap_credits[i].getAmount();
+	credits[i].amount = amount;
+	auto pub = cap_credits[i].getAccount();
+	Bytes pub_bytes(pub.begin(), pub.end());
+	credits[i].pub = pub_bytes;
+	PublicSignKey pub_key(pub_bytes);
+	
+	if (amount < 0) {
+	  if (n_neg >= witnesses.size())
+	    throw "";
+	  
+	  auto witness_data = cap_witnesses[n_neg].getData();
+	  Bytes witness(witness_data.begin(), witness_data.end());
+	  witnesses[n_neg] = witness;
+	  Signature sig(witness);
+	  if (!sig.verify(credit_data, pub_key))
+	    throw "";
+	  n_neg++;
+	}
+      }
+      
+    }
+    
+    Bytes credit_bytes() {
+      WriteMessage credit_message;
+      auto credit_set_builder = credit_message.builder<CreditSet>();
+      auto credit_set = credit_set_builder.initCredits(credits.size());
+      
+      for (int i(0); i < credits.size(); ++i) {
+	//credit_builder[i].setAccount((kj::ArrayPtr<kj::byte>)accounts[i].pub);
+	credit_set[i].setAccount(credits[i].pub.kjp());
+	credit_set[i].setAmount(credits[i].amount);
+      }
+      
+      auto credit_data = credit_message.bytes();
+      return credit_data;
+    }
+
+    Bytes bytes() {
+      WriteMessage msg;
+      auto tx_b = msg.builder<::Transaction>();
+      auto sig_b = tx_b.initSignatures(witnesses.size());
+      auto cred_data = credit_bytes();
+      for (int n(0); n < witnesses.size(); ++n) {
+	sig_b[n].setType(0);
+	sig_b[n].setData(witnesses[n].kjp());
+      }
+      tx_b.setCreditSet(cred_data.kjp());
+      return msg.bytes();
+    }
+    
+  };
+  
+  
+  struct BlockHeader {
+    Bytes hash;
+    Bytes prev_hash, tx_hash, utxo_hash;
+    Bytes nonce;
+    uint64_t T;
+    uint64_t height;
+
+    BlockHeader() : T(0), height(0) {}
+    
+    void from_bytes(Bytes &b) {
+      ReadMessage msg(b);
+      auto block_r = msg.root<Block>();
+      
+      hash = block_r.getPrevHash();
+      tx_hash = block_r.getTransactionHash();
+      utxo_hash = block_r.getUtxoHash();
+      nonce = block_r.getNonce();
+      T = block_r.getTime();
+    }
+    
+    Bytes bytes() {
+      WriteMessage msg;
+      auto builder = msg.builder<Block>();
+      
+      builder.setPrevHash(prev_hash.kjp());
+      builder.setTransactionHash(tx_hash.kjp());
+      builder.setUtxoHash(utxo_hash.kjp());
+      builder.setTime(T);
+      
+      builder.setNonce(nonce.kjp());
+      return msg.bytes();
+    }
+    
+    Bytes calculate_hash() {
+      Bytes b = bytes();
+      return Hash(b);
+    }		      
+  };
+  
+  struct BlockChain {
+    map<Bytes, BlockHeader*> blocks;
+    vector<BlockHeader*> new_blocks;
+
+    map<Bytes, Transaction*> txs;  //all txs
+    map<Bytes, Account*> utxos;
+    
+    set<Bytes> mempool; //hashes
+    vector<Bytes> latest_set; //hashes (subset of mempool)
+    
+    map<Bytes, vector<Bytes>> hash_sets;
+    map<Bytes, vector<Bytes>> utxo_sets;
+    
+    std::mutex chain_mutex;
+
+    vector<Bytes*> get_tx_hashes(Bytes hash) {
+    }
+
+    vector<Bytes*> get_utxo_hashes(Bytes hash) {
+    }
+
+    vector<Bytes*> get_tx_hashes(Bytes start_block, Bytes end_block) {
+    }
+
+    vector<Bytes*> get_utxo_hashes(Bytes start_block, Bytes end_block) {
+    }
+
+    vector<Bytes*> get_block_hashes(Bytes start_block = Bytes(), Bytes end_block = Bytes()) {
+    }
+    
+    void add(Transaction tx) {
+      auto b = tx.bytes();
+      Hash hash(b);
+      if (!txs.count(hash)) {
+	txs[hash] = new Transaction(tx);
+	mempool.insert(hash);
+      }
+    }
+    
+    Bytes get_latest() {
+      vector<Bytes*> latest_set_ptrs;
+				 
+      latest_set.clear();
+      std::lock_guard<std::mutex> lock(chain_mutex);
+      for (auto &hash : mempool) {
+	latest_set.push_back(hash);
+	latest_set_ptrs.push_back(const_cast<Bytes*>(&hash));
+      }
+      Bytes hash = hash_vec(latest_set_ptrs);
+      return hash;
+    }
+    
+    bool add_block_if_ok(BlockHeader &header) {
+      auto data = header.bytes();
+      HardHash h(data);
+      if (h[0] != 0) return false;
+
+      if (hash_sets.count(header.tx_hash)) { //we got the transactions
+	
+      }
+    }
+  };
+
+  struct BlockChainReconsiler {
+    BlockChain *chain;
+
+    BlockChainReconsiler(BlockChain *chain_) : chain(chain_) {}
+    BlockChainReconsiler() : chain(0) {}
+    
+    vector<BlockHeader> new_headers;
+    map<Bytes, SetReconsiler*> hash_reconsilers;
+
+    void add_filter(Bytes hash, int n, Bloom bloom) {
+      if (!hash_reconsilers.count(hash))
+	hash_reconsilers[hash] = new SetReconsiler(hash);
+    }
+
+    bool check(Bytes hash) {
+      if (!hash_reconsilers.count(hash)) return false;
+      hash_reconsilers[hash]->check();
+    }
+
+    void init_hash(Bytes hash) {
+      if (!hash_reconsilers.count(hash))
+	hash_reconsilers[hash] = new SetReconsiler(hash);
+    }
+
+    vector<Bloom> &filters(Bytes hash) {
+      hash_reconsilers[hash]->filters;
+    }
+
+    bool get_set_or_filter(Bytes hash) {
+      if (filters(hash).size() == 0)
+	return false;
+
+      //reconsiler.apply_filters(hash);
+      SetReconsiler &r(*hash_reconsilers[hash]);
+      return r.current_set.size() < r.N;
+    }
+    
+    void apply_filters() {
+      
+    }
+  };
+}
+
+pttp::BlockChain block_chain;
+pttp::BlockChainReconsiler reconsiler;
 
 void read_lines() {
   while (true) {
@@ -209,37 +453,35 @@ void manage_connection(Connection *con) {
 	{
 	  cout << "req hash filter: " << endl;
 	  Bytes req_hash = task.data;
-	  
+
+	  //Send filter request
 	  WriteMessage msg;
 	  auto b = msg.builder<Message>();
-	  auto reqhashset_builder = b.getContent().initReqHashsetFilter();
-	  reqhashset_builder.setHash(req_hash.kjp());
+	  auto reqhashset_builder = b.getContent().initReqSetFilter();
+	  reqhashset_builder.getReq().setTxSetHash(req_hash.kjp());
 
 	  auto data = msg.bytes();
 	  con->sock.send(data);
 	  auto result = con->sock.recv();
-	  
+
+	  //read filter
 	  ReadMessage in_msg(result);
-	  auto msg_reader = in_msg.root<Message>();
-	  auto content = msg_reader.getContent();
-	  assert(content.which() == Message::Content::HASHSET_FILTER);
-	  auto filter = content.getHashsetFilter();
+	  auto filter = in_msg.root<SetFilter>();
 	  int n = filter.getN();
 	  auto bloom_read = filter.getBloom();
-	  auto bloom_data = bloom_read.getData();
-	  Bytes bloom_bytes(bloom_data.begin(), bloom_data.end());
 	  
 	  auto p = bloom_read.getP();
 	  cout << "p: " << p  << endl;
 	  if (p == 0) //no filter
 	    break;
+
 	  auto key = bloom_read.getHashKey();
 	  Bytes key_bytes(key.begin(), key.end());
+	  auto bloom_data = bloom_read.getData();
+	  Bytes bloom_bytes(bloom_data.begin(), bloom_data.end());
 	  
 	  std::lock_guard<std::mutex> lock(set_mutex);
-	  reconsiler.N = n;
-	  reconsiler.filters.push_back(Bloom(bloom_bytes, int(p), key_bytes));
-
+	  reconsiler.add_filter(req_hash, n, Bloom(bloom_bytes, int(p), key_bytes));
 	  break;
 	}
       case REQ_HASHSET:
@@ -249,8 +491,9 @@ void manage_connection(Connection *con) {
 	  
 	  WriteMessage msg;
 	  auto b = msg.builder<Message>();
-	  auto reqhashset_builder = b.getContent().initReqHashset();
-	  reqhashset_builder.setHash(req_hash.kjp());
+	  auto reqhashset_builder = b.getContent().initReqSet();
+	  
+	  reqhashset_builder.getReq().setTxSetHash(req_hash.kjp());
 	  auto bloom_builder = reqhashset_builder.initBloom();
 
 	  //make filter of what we have
@@ -267,10 +510,9 @@ void manage_connection(Connection *con) {
 	  auto result = con->sock.recv();
 	  
 	  ReadMessage in_msg(result);
-	  auto msg_reader = in_msg.root<Message>();
-	  auto content = msg_reader.getContent();
-	  assert(content.which() == Message::Content::HASHSET);
-	  auto hashset = content.getHashset().getSet();
+	  auto msg_reader = in_msg.root<::Set>();
+	  	  
+	  auto hashset = msg_reader.getData();
 	  cout << "got set: " << hashset.size() << endl;
 	  std::lock_guard<std::mutex> lock(set_mutex);
 	  for (auto h : hashset) {
@@ -298,26 +540,21 @@ void manage() {
 	{
 	  std::lock_guard<std::mutex> lock(set_mutex);
 	  Bytes hash = task.data;
-	  reconsiler.hash = hash;
-	  if (reconsiler.check_hash()) {
+	  reconsiler.init_hash(hash);
+	  if (reconsiler.check(hash)) {
 	    cout << "DONE" << endl;
 	    break;
 	  }
-	  if (reconsiler.filters.size() == 0)
+	  if (reconsiler.get_set_or_filter(hash)) {
 	    for (auto &con : connections)
-	      con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
-	  else {
-	    reconsiler.filter(full_set);
-	    
-	    if (reconsiler.current_set.size() < reconsiler.N) {
-	      for (auto &con : connections)
-		con->gtd.add(Task(REQ_HASHSET, reconsiler.hash));
-	    } else {
-	      for (auto &con : connections)
-		con->gtd.add(Task(REQ_HASHSET_FILTER, reconsiler.hash));
-	    }
+	      con->gtd.add(Task(REQ_HASHSET, hash));
+	  } else {
+	    for (auto &con : connections)
+	      con->gtd.add(Task(REQ_HASHSET_FILTER, hash));
 	  }
-	  manager_gtd.add(task, std::chrono::seconds(3));
+	  
+	  
+	  manager_gtd.add(task, std::chrono::seconds(1));
 	  break;
 	}
 
@@ -381,184 +618,6 @@ void manage() {
 
      }
   }
-}
-
-namespace pttp {
-  struct Account {
-    Bytes pub;
-    int64_t amount;
-    uint64_t signature_count;
-    Bytes commitment;
-  };
-    
-  struct Credit {
-    Bytes pub;
-    int64_t amount;
-  };
-  
-  struct Transaction {
-    vector<Credit> credits;
-    vector<Bytes> witnesses;
-
-    Transaction(Bytes b) {
-      ReadMessage r(b);
-      auto tx = r.root<::Transaction>();
-      auto credit_set = tx.getCreditSet();
-      Bytes credit_data(credit_set.begin(), credit_set.end());
-
-      Hash credit_hash(credit_data);
-      auto hash = tx.getHash();
-      if (Bytes(hash.begin(), hash.end()) != credit_hash)
-	throw "";
-      
-      ReadMessage credit_msg(credit_data);
-      auto credit_reader = credit_msg.root<CreditSet>();
-      auto cap_credits = credit_reader.getCredits();
-      auto cap_witnesses = tx.getSignatures();
-
-
-      //check signatures
-      int n_neg(0);
-      int n = cap_credits.size();
-     
-      credits.resize(n);
-      witnesses.resize(n);
-      for (int i(0); i < n; ++i) {
-	int amount = cap_credits[i].getAmount();
-	credits[i].amount = amount;
-	auto pub = cap_credits[i].getAccount();
-	Bytes pub_bytes(pub.begin(), pub.end());
-	credits[i].pub = pub_bytes;
-	PublicSignKey pub_key(pub_bytes);
-	
-	if (amount < 0) {
-	  if (n_neg >= witnesses.size())
-	    throw "";
-	  
-	  auto witness_data = cap_witnesses[n_neg].getData();
-	  Bytes witness(witness_data.begin(), witness_data.end());
-	  witnesses[n_neg] = witness;
-	  Signature sig(witness);
-	  if (!sig.verify(credit_data, pub_key))
-	    throw "";
-	  n_neg++;
-	}
-      }
-      
-    }
-    
-    Bytes credit_bytes() {
-      WriteMessage credit_message;
-      auto credit_set_builder = credit_message.builder<CreditSet>();
-      auto credit_set = credit_set_builder.initCredits(credits.size());
-      
-      for (int i(0); i < credits.size(); ++i) {
-	//credit_builder[i].setAccount((kj::ArrayPtr<kj::byte>)accounts[i].pub);
-	credit_set[i].setAccount(credits[i].pub.kjp());
-	credit_set[i].setAmount(credits[i].amount);
-      }
-      
-      auto credit_data = credit_message.bytes();
-      return credit_data;
-    }
-
-    Bytes bytes() {
-      WriteMessage msg;
-      auto tx_b = msg.builder<::Transaction>();
-      auto sig_b = tx_b.initSignatures(witnesses.size());
-      auto cred_data = credit_bytes();
-      for (int n(0); n < witnesses.size(); ++n) {
-	sig_b[n].setType(0);
-	sig_b[n].setData(witnesses[n].kjp());
-	
-      }
-      tx_b.setCreditSet(cred_data.kjp());
-      return msg.bytes();
-    }
-    
-  };
-  
-  
-  struct BlockHeader {
-    Bytes hash;
-    Bytes prev_hash, tx_hash, utxo_hash;
-    Bytes nonce;
-    uint64_t T;
-    
-    void from_bytes(Bytes &b) {
-      ReadMessage msg(b);
-      auto block_r = msg.root<Block>();
-      
-      hash = block_r.getPrevHash();
-      tx_hash = block_r.getTransactionHash();
-      utxo_hash = block_r.getUtxoHash();
-      nonce = block_r.getNonce();
-      T = block_r.getTime();
-    }
-    
-    Bytes bytes() {
-      WriteMessage msg;
-      auto builder = msg.builder<Block>();
-      
-      Bytes rnd(32);
-      Curve::inst().random_bytes(rnd);
-      Hash hash(rnd);
-      
-      builder.setPrevHash(prev_hash.kjp());
-      builder.setTransactionHash(tx_hash.kjp());
-      builder.setUtxoHash(utxo_hash.kjp());
-      builder.setTime(T);
-      
-      builder.setNonce(nonce.kjp());
-      return msg.bytes();
-    }
-    
-    Bytes calculate_hash() {
-      Bytes b = bytes();
-      return Hash(b);
-    }		      
-  };
-  
-  struct BlockChain {
-    map<Bytes, BlockHeader*> blocks;
-    
-    set<Bytes> new_hashes;
-    set<Bytes> selected_hashes;
-    
-    map<Bytes, Bytes*> txs;
-    
-    map<Bytes, std::vector<Bytes>> hash_sets;
-    std::mutex chain_mutex;
-    
-    vector<Bytes> mempool;
-    
-    void add(Transaction tx) {
-      auto b = tx.bytes();
-      Hash hash(b);
-      if (!txs.count(hash)) {
-	txs[hash] = new Bytes(b);
-	new_hashes.insert(hash);
-      }
-    }
-    
-    Bytes get_latest() {
-      vector<Bytes*> latest_set;
-      vector<Bytes> latest_set_hashes;
-      map<Bytes, std::vector<Bytes>>::iterator it = hash_sets.begin(), it_end = hash_sets.end();
-      std::lock_guard<std::mutex> lock(chain_mutex);
-      for (; it != it_end; ++it) {
-	latest_set_hashes.push_back(it->first);
-	latest_set.push_back(const_cast<Bytes*>(&(it->first)));
-      }
-      Bytes hash = hash_vec(latest_set);
-      hash_sets[hash] = latest_set_hashes;
-      return hash;
-    }
-    
-    void add_block(BlockHeader &header) {
-      
-    }
-  };
 }
 
 
@@ -636,14 +695,17 @@ void serve(string con_str) {
 	content_builder.initOk();
 	break;
       }
-      case Message::Content::REQ_HASHSET_FILTER: {
+      case Message::Content::REQ_SET_FILTER: {
 	cout << "got req hashset filter" << endl;
-	auto filter_b = content_builder.initHashsetFilter();
+	auto filter_b = content_builder.initSetFilter();
 	Bloom bloom(4999);
 
 	std::lock_guard<std::mutex> lock(set_mutex);
+
+	//filter stuff
 	for (auto s : full_set)
 	  bloom.set(s);
+	
 	filter_b.setN(full_set.size());
 	auto bloom_builder = filter_b.initBloom();
 	Bytes bloom_bytes = bloom.bytes(); ///Shady, gets destroyed before message is sent
@@ -653,31 +715,43 @@ void serve(string con_str) {
 	
 	break;
       }
-      case Message::Content::REQ_HASHSET: {
+      case Message::Content::REQ_SET: {
+	auto req_reader = content.getReqSet();
 	cout << "got req hashset" << endl;
-	auto req_reader = content.getReqHashset();
-	auto hash = req_reader.getHash();
 	auto bloom_read = req_reader.getBloom();
 	auto bloom_data = bloom_read.getData();
 	Bytes bloom_bytes(bloom_data.begin(), bloom_data.end());
 	  
-	auto p = bloom_read.getP();
-	if (p == 0) //no filter
-	  break;
+	auto p = bloom_read.getP(); //0 if empty
 	auto key = bloom_read.getHashKey();
 	Bytes key_bytes(key.begin(), key.end());
 	Bloom bloom(bloom_bytes, p, key_bytes);
 	
-	std::lock_guard<std::mutex> lock(set_mutex);
-	
-	vector<Bytes*> bs;
-	for (auto &s : full_set)
-	  if (!bloom.has(const_cast<Bytes&>(s)))
-	    bs.push_back(const_cast<Bytes*>(&s));//s.kjp()
-	
-	auto hash_set = content_builder.initHashset().initSet(bs.size());
-	for (int i(0); i < bs.size(); ++i)
-	  hash_set.set(i, bs[i]->kjp());
+	auto req_type = req_reader.getReq();
+	switch (req_type.which())
+	  {
+	  case ::ReqSetFilter::Req::TX_SET_HASH: {
+	    std::lock_guard<std::mutex> lock(set_mutex);
+	    auto cap_hash = req_type.getTxSetHash();
+	    Bytes target_hash(cap_hash);
+	    
+	    if (block_chain.hash_sets.count(target_hash) == 0) {
+	      content_builder.initReject();
+	      break;
+	    }
+
+	    auto set = block_chain.hash_sets[target_hash];
+	    vector<Bytes> bs;
+	    for (auto &s : set)
+	      if (!bloom.has(const_cast<Bytes&>(s)))
+		bs.push_back(block_chain.txs[s]->bytes());//s.kjp()
+	    
+	    
+	    auto hash_set = content_builder.initSet().initData(bs.size());
+	    for (int i(0); i < bs.size(); ++i)
+	      hash_set.set(i, bs[i].kjp());
+	  }
+	}
 	     
 	break;
       }
@@ -698,6 +772,8 @@ void serve(string con_str) {
 
 
 int main(int argc, char **argv) {
+  reconsiler.chain = &block_chain;
+  
   cout << "my ip: " << estimate_outside_ip() << endl;
 
   //random filler

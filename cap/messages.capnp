@@ -14,6 +14,12 @@ struct Witness {
        data @1 :Data;
 }
 
+struct Utxo {
+       account @0 :Data;
+       amount @1 :Int64;
+       nx @2 :UInt64;
+}
+
 struct Credit {
        account @0 :Data;
        amount @1 :Int64;
@@ -71,20 +77,33 @@ struct BloomSet {
        hashKey @2 :Data;
 }
 
-struct ReqHashset {
-       hash @0 :Data; #specific hash set, could be a general id
-       bloom @1  :BloomSet;
+struct BlockRange {
+       from @0 :Data;
+       to @1 :Data;       
 }
 
-struct Hashset {
-       set @0 :List(Data);
+struct ReqSet {
+       req :union {
+       	   txSetHash @0 :Data;
+	   utxoSetHash @1 :Data;
+	   blockRange @2 :BlockRange;
+	}
+       bloom @3  :BloomSet; #if bloom is empty, send all
 }
 
-struct ReqHashsetFilter {
-       hash @0 :Data; #specific hash set, could be a general id
+struct Set {
+       data @0 :List(Data);
 }
 
-struct HashsetFilter {
+struct ReqSetFilter {
+       req :union {
+       	   txSetHash @0 :Data;
+	   utxoSetHash @1 :Data;
+	   blockRange @2 :BlockRange;
+	}
+}
+
+struct SetFilter {
        n @0 :UInt64; #size of set
        bloom @1 :BloomSet;
 }
@@ -100,9 +119,9 @@ struct Message {
 	       transaction @6 :Transaction;
 	       block @7 :Block;
 	       text @8 :Text;
-	       reqHashset @9 :ReqHashset;	
-	       hashset @10 :Hashset;
-	       reqHashsetFilter @11 :ReqHashsetFilter;
-	       hashsetFilter @12 :HashsetFilter;	       
+	       reqSet @9 :ReqSet;	
+	       set @10 :Set;
+	       reqSetFilter @11 :ReqSetFilter;
+	       setFilter @12 :SetFilter;	       
       }
 }

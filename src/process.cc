@@ -28,8 +28,8 @@ bool create_transaction(::Transaction::Builder &transaction_builder, vector<Sign
   transaction_builder.setCreditSet(credit_data.kjp());
 
   //calculate hash
-  Hash hash(credit_data);
-  transaction_builder.setHash(hash.kjp());
+  //Hash hash(credit_data);
+  //transaction_builder.setHash(hash.kjp());
   
   //setup witnesses
   auto witness_builder = transaction_builder.initSignatures(n_negative);
@@ -65,9 +65,9 @@ bool process_transaction(::Transaction::Reader &tx, std::vector<PublicSignKey> *
   Bytes credit_data(credit_set.begin(), credit_set.end());
 
   Hash credit_hash(credit_data);
-  auto hash = tx.getHash();
-  if (Bytes(hash.begin(), hash.end()) != credit_hash)
-    return false;
+  //auto hash = tx.getHash();
+  //if (Bytes(hash.begin(), hash.end()) != credit_hash)
+  //  return false;
   
   ReadMessage credit_msg(credit_data);
   auto credit_reader = credit_msg.root<CreditSet>();

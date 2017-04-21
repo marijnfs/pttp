@@ -19,10 +19,10 @@ struct Bytes : public std::vector<uint8_t> {
   Bytes(int n) : std::vector<uint8_t>(n) {}
  Bytes(std::string &s) : std::vector<uint8_t>(s.size()) { memcpy(&(*this)[0], &s[0], s.size()); }
  Bytes(const char *c) : std::vector<uint8_t>() { std::string s(c); resize(s.size()); memcpy(&(*this)[0], &s[0], s.size()); }
- Bytes(capnp::Data::Reader r) : ::Bytes(r.begin(), r.end()) {}
- Bytes(capnp::Data::Reader const &r) : ::Bytes(r.begin(), r.end()) {}
+  //Bytes(capnp::Data::Reader r): ::Bytes(r.begin(), r.end()) {}
+ Bytes(capnp::Data::Reader &r): ::Bytes(r.begin(), r.end()) {}
   Bytes &operator=(capnp::Data::Reader const &r) {*this = Bytes(r.begin(), r.end()); return *this;}
-
+  
   template <typename T>
     Bytes(T *c, T *e) : std::vector<uint8_t>(c, e) {}
 
