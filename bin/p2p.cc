@@ -105,6 +105,12 @@ struct SetReconsiler {
 };
 
 
+uint64_t now_ms() {
+    std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
+    uint64_t ms_uint = ms.count();
+    return ms_uint;
+}
+
 void mine() {
   int n(0);
 
@@ -116,10 +122,9 @@ void mine() {
     //builder.setPrevHash(hash.kjp());
     //builder.setTransactionHash(hash.kjp());
     //builder.setUtxoHash(hash.kjp());
-    std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
-    uint64_t ms_uint = ms.count();
+
     //cout << ms_uint << endl;
-    builder.setTime(ms_uint);
+    builder.setTime(now_ms());
     
     Bytes rnd(32);
     random_bytes(rnd);
@@ -268,22 +273,25 @@ namespace pttp {
     
     Bytes calculate_hash() {
       Bytes b = bytes();
-      return Hash(b);
+      return HardHash(b);
     }		      
   };
   
   struct BlockChain {
     map<Bytes, BlockHeader*> blocks;
     vector<BlockHeader*> new_blocks;
-
+    Bytes latest_block_hash;
+    
     map<Bytes, Transaction*> txs;  //all txs
     map<Bytes, Account*> utxos;
     
     set<Bytes> mempool; //hashes
-    vector<Bytes> latest_set; //hashes (subset of mempool)
+    vector<Bytes> latest_set; //hashes (valid subset of mempool against current utxos)
+    Bytes latest_hash;
     
     map<Bytes, vector<Bytes>> hash_sets;
-    map<Bytes, vector<Bytes>> utxo_sets;
+    map<Bytes, vector<Bytes>> utxo_sets; //indexed by pub key
+    map<Bytes, int64_t> balance; //essentially utxo set in searchable form indexed by pub key
     
     std::mutex chain_mutex;
 
@@ -312,24 +320,42 @@ namespace pttp {
     }
     
     Bytes get_latest() {
-      vector<Bytes*> latest_set_ptrs;
-				 
+      map<Bytes, int64_t> balance_cpy(balance);
+      vector<Bytes*> hash_ptrs;
       latest_set.clear();
+      
       std::lock_guard<std::mutex> lock(chain_mutex);
+      
       for (auto &hash : mempool) {
-	latest_set.push_back(hash);
-	latest_set_ptrs.push_back(const_cast<Bytes*>(&hash));
+	bool valid(true);
+	auto tx = txs[hash];
+	set<Bytes> pub_set; //transactions in credit set should be unique
+	for (auto &cred : tx->credits) {
+	  if (pub_set.count(cred.pub)) {valid = false; break;}
+	  pub_set.insert(cred.pub);
+	  if (cred.amount < 0 && (!balance_cpy.count(cred.pub) || balance_cpy[cred.pub] < -cred.amount)) {valid = false; break;}
+	}
+	if (valid) {
+	  latest_set.push_back(hash);
+	  hash_ptrs.push_back(const_cast<Bytes*>(&hash));
+	  for (auto &cred : tx->credits) {
+	    if (balance_cpy.count(cred.pub))
+	      balance_cpy[cred.pub] += cred.amount;
+	    else
+	      balance_cpy[cred.pub] = cred.amount;
+	  }
+	}
       }
-      Bytes hash = hash_vec(latest_set_ptrs);
+      Bytes hash = hash_vec(hash_ptrs);
+      
       return hash;
     }
     
     bool add_block_if_ok(BlockHeader &header) {
-      auto data = header.bytes();
-      HardHash h(data);
-      if (h[0] != 0) return false;
+      Bytes hash = header.calculate_hash();
+      if (hash[0] != 0) return false;
 
-      if (hash_sets.count(header.tx_hash)) { //we got the transactions
+      if (hash_sets.count(header.tx_hash)) { //do we have the transactions?
 	
       }
     }

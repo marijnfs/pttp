@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
   cout << "pub: " << bytes_to_bech32("pb", test_pair.pub) << endl;
   cout << "priv: " << bytes_to_bech32("pv", test_pair.priv) << endl;
   Bytes pwd("apasswd");
-  HardHash pwd_hash(pwd);
+  HardestHash pwd_hash(pwd);
+  cout << "pwd: " << pwd_hash << endl;
   SecretKey enc_key;
   copy(pwd_hash.begin(), pwd_hash.end(), enc_key.begin());
   

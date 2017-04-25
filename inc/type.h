@@ -2,8 +2,8 @@
 #define __BYTES_H__
 
 #include <vector>
-#include <string.h>
 #include <string>
+#include <cassert>
 
 #include <kj/common.h>
 #include <kj/string.h>
@@ -48,7 +48,13 @@ struct Bytes : public std::vector<uint8_t> {
    T ptr() {
    return reinterpret_cast<T>(&(*this)[0]);
  }
-  
+
+ void x_or(Bytes &b) {
+   assert(b.size() == size());
+   for (size_t i(0); i < size(); ++i)
+     (*this)[i] ^= b[i];
+ }
+ 
   operator kj::ArrayPtr<kj::byte>() {
   //void bla() {
     return kj::ArrayPtr<kj::byte>(&(*this)[0], size());

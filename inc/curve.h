@@ -101,6 +101,11 @@ struct HardHash : public Bytes {
   HardHash(Bytes &m);  
 };
 
+struct HardestHash : public Bytes {
+  HardestHash(Bytes &m, HardHashSalt &salt);
+  HardestHash(Bytes &m);  
+};
+
 struct ShortHashKey : public Bytes {
  ShortHashKey(Bytes &b) : ::Bytes(b) {}
  ShortHashKey() : ::Bytes(crypto_shorthash_KEYBYTES) {

@@ -140,13 +140,33 @@ HardHash::HardHash(Bytes &m, HardHashSalt &salt) : Bytes(32) {
 
 HardHash::HardHash(Bytes &m) : Bytes(32) {
   Hash salt(m, crypto_pwhash_SALTBYTES); //create salt by hashing data
-    crypto_pwhash(this->ptr<unsigned char*>(), size(),
-		  m.ptr<char*>(), m.size(),
-		  salt.ptr<unsigned char*>(),
-		  crypto_pwhash_OPSLIMIT_INTERACTIVE,
-		  crypto_pwhash_MEMLIMIT_INTERACTIVE,
-		  crypto_pwhash_ALG_DEFAULT);
-  }
+  crypto_pwhash(this->ptr<unsigned char*>(), size(),
+		m.ptr<char*>(), m.size(),
+		salt.ptr<unsigned char*>(),
+		crypto_pwhash_OPSLIMIT_INTERACTIVE,
+		crypto_pwhash_MEMLIMIT_INTERACTIVE,
+		crypto_pwhash_ALG_DEFAULT);
+}
+
+HardestHash::HardestHash(Bytes &m, HardHashSalt &salt) : Bytes(32) {
+  cout << size() << endl;
+  crypto_pwhash(ptr<unsigned char*>(), size(),
+		m.ptr<char*>(), m.size(),
+		salt.ptr<unsigned char*>(),
+		crypto_pwhash_OPSLIMIT_SENSITIVE,
+		crypto_pwhash_MEMLIMIT_SENSITIVE,
+		crypto_pwhash_ALG_DEFAULT);
+}
+
+HardestHash::HardestHash(Bytes &m) : Bytes(32) {
+  Hash salt(m, crypto_pwhash_SALTBYTES); //create salt by hashing data
+  crypto_pwhash(this->ptr<unsigned char*>(), size(),
+		m.ptr<char*>(), m.size(),
+		salt.ptr<unsigned char*>(),
+		crypto_pwhash_OPSLIMIT_SENSITIVE,
+		crypto_pwhash_MEMLIMIT_SENSITIVE,
+		crypto_pwhash_ALG_DEFAULT);
+}
 
 
 
