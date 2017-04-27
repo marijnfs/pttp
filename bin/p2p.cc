@@ -279,8 +279,11 @@ namespace pttp {
   
   struct BlockChain {
     map<Bytes, BlockHeader*> blocks;
-    vector<BlockHeader*> new_blocks;
+    map<Bytes, int> heights;
+    
+    //vector<BlockHeader*> new_blocks;
     Bytes latest_block_hash;
+
     
     map<Bytes, Transaction*> txs;  //all txs
     map<Bytes, Account*> utxos;
@@ -288,13 +291,17 @@ namespace pttp {
     set<Bytes> mempool; //hashes
     vector<Bytes> latest_set; //hashes (valid subset of mempool against current utxos)
     Bytes latest_hash;
+
+    Bytes zero_block;
     
     map<Bytes, vector<Bytes>> hash_sets;
     map<Bytes, vector<Bytes>> utxo_sets; //indexed by pub key
     map<Bytes, int64_t> balance; //essentially utxo set in searchable form indexed by pub key
     
     std::mutex chain_mutex;
-
+    
+    BlockChain() : zero_block(32) {}
+    
     vector<Bytes*> get_tx_hashes(Bytes hash) {
     }
 
@@ -347,7 +354,7 @@ namespace pttp {
 	}
       }
       Bytes hash = hash_vec(hash_ptrs);
-      
+      latest_hash = hash;
       return hash;
     }
     
@@ -357,6 +364,44 @@ namespace pttp {
 
       if (hash_sets.count(header.tx_hash)) { //do we have the transactions?
 	
+      }
+    }
+
+    void mark_blocks() {
+      for (auto b : blocks) heights[b.first] = 0;
+      
+      for (auto b : blocks) {
+	vector<Bytes> list;
+	list.push_back(b.first);
+	auto cur = b.second;
+	while (true) {
+	  if (cur->prev_hash == zero_block) {
+	    int h = 0;
+	    for (auto it = list.rbegin(); it != list.rend(); ++it) { //set heights
+	      heights[*it] = h + 1;
+	      ++h;
+	    }
+	    break;
+	  }
+	  if (!blocks.count(cur->prev_hash)) { //set neg height
+	    for (auto e : list) heights[e] = -1;
+	    break;
+	  }
+	  if (heights[cur->prev_hash] == -1) {
+	    for (auto e : list) heights[e] = -1;
+	    break;
+	  }
+	  if (heights[cur->prev_hash] > 0) {
+	    int h = heights[cur->prev_hash];
+	    for (auto it = list.rbegin(); it != list.rend(); ++it) { //set proper heights
+	      heights[*it] = h + 1;
+	      ++h;
+	    }
+	    break;
+	  }
+	  list.push_back(cur->prev_hash);
+	  cur = blocks[cur->prev_hash];
+	}
       }
     }
   };
