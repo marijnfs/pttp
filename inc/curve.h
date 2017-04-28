@@ -121,6 +121,14 @@ struct ShortHash : public Bytes {
   void reset() {
     Curve::inst().random_bytes(*this);
   }
+
+  uint64_t to_uint(int mod) {
+    uint64_t val(*reinterpret_cast<uint64_t*>(&(*this)[0]));
+    val >>= 32;
+    val *= mod;
+    val >>= 32;
+    return val;
+  }
 };
 
 struct KeyPair {

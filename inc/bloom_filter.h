@@ -38,11 +38,7 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_), n_o
 
   uint64_t hash(Bytes &b) {
     ShortHash h(key, b);
-    uint64_t val(*reinterpret_cast<uint64_t*>(&h[0]));
-    val >>= 32;
-    val *= P;
-    val >>= 32;
-    return val;
+    return h.to_uint(P);
   }
   
   bool has(Bytes &b) {

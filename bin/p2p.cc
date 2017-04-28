@@ -5,8 +5,6 @@
 #include <cstdint>
 #include <thread>
 #include <map>
-#include <ctime>
-#include <chrono>
 #include <algorithm>
 
 #include <capnp/message.h>
@@ -61,8 +59,9 @@ struct SetReconsiler {
   size_t N;
   vector<Bloom> filters;
   vector<Bytes> current_set;
-
-  SetReconsiler(Bytes hash_) : hash(hash_), N(0) {}
+  uint64_t start_time;
+  
+  SetReconsiler(Bytes hash_) : hash(hash_), N(0), start_time(now_ms()) {}
   
   void filter(std::vector<Bytes*> set) {
     current_set.clear();
@@ -105,11 +104,6 @@ struct SetReconsiler {
 };
 
 
-uint64_t now_ms() {
-    std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
-    uint64_t ms_uint = ms.count();
-    return ms_uint;
-}
 
 void mine() {
   int n(0);
@@ -300,7 +294,7 @@ namespace pttp {
     
     std::mutex chain_mutex;
     
-    BlockChain() : zero_block(32) {}
+    BlockChain() : zero_block(32)  {}
     
     vector<Bytes*> get_tx_hashes(Bytes hash) {
     }
