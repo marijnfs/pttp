@@ -13,15 +13,15 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  Bytes msg_hex(argv[1]);
+  string msg_hex(argv[1]);
   string salt_hex(argv[2]);
   Bytes pass_b(argv[3]);
   
-  Bytes salt_b(8);
+  Bytes salt_b;
   salt_b.from_hex(salt_hex);
 
   //HardHashSalt salt;
-  Hash salt_h(salt_b, salt_b.size());
+  Hash salt_h(salt_b, 16);
   HardHashSalt salt(salt_h);
   //copy(salt_h.begin(), salt_h.end(), salt.begin());
   

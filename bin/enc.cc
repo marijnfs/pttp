@@ -13,25 +13,25 @@ int main(int argc, char **argv) {
     return 1;
   }
   
+  Bytes msg_b(argv[1]);
   Bytes pass_b(argv[2]);
 
-
-  Bytes salt_b(16);
+  Bytes salt_b(8);
   Curve::inst().random_bytes(salt_b);
 
   //HardHashSalt salt;
-  Hash salt_h(salt_b, salt_b.size());
+  Hash salt_h(salt_b, 16);
   HardHashSalt salt(salt_h);
   //copy(salt_h.begin(), salt_h.end(), salt.begin());
   
   HardestHash h(pass_b, salt);
   
-  Bytes msg_b(argv[1]);
   Hash hh(h, msg_b.size());
   msg_b.x_or(hh);
 
-  cout << "msg: " << msg_b << endl;
-  cout << "salt: " << salt_b << endl;
+  //cout << "msg: " << msg_b << endl;
+  //cout << "salt: " << salt_b << endl;
+  cout << msg_b << " " << salt_b << endl;
 
   
   
