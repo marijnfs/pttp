@@ -82,4 +82,25 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_), n_o
   
 };
 
+/*
+struct Cuckoo {
+  ShortHash h1, h2;
+  Bloom filter1, filter2;
+  vector<Bytes> hashes;
+  size_t N;
+  
+Cuckoo(size_t N_) : hashes(N_), N(N_) {
+    
+  }
+
+  void store(Bytes hash, Bytes data) {
+    
+  }
+
+  void get() {
+  }
+  
+  
+  };*/
+
 #endif

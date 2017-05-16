@@ -62,6 +62,7 @@ SecretKey::SecretKey() : SafeBytes(crypto_box_SECRETKEYBYTES) {
   
 }
 
+
 SafeBytes SecretKey::pub() {
   SafeBytes pub_key(crypto_box_PUBLICKEYBYTES);
   crypto_scalarmult_base(&pub_key[0], &(*this)[0]);
@@ -104,6 +105,10 @@ KeyPair::KeyPair() {
   crypto_box_keypair(&pub[0], &priv[0]);
 }
 
+KeyPair::KeyPair(Bytes seed) {
+  crypto_box_seed_keypair(&pub[0], &priv[0], &seed[0]);
+}
+
 
 SignKeyPair::SignKeyPair() {
   crypto_sign_keypair(&pub[0], &priv[0]);
@@ -128,6 +133,12 @@ HardHashSalt::HardHashSalt() : Bytes(crypto_pwhash_SALTBYTES) {
   Curve::inst().random_bytes(*this);
 }
 
+HardHashSalt::HardHashSalt(Bytes &b) : Bytes(crypto_pwhash_SALTBYTES) {
+  assert(size() == b.size());
+  copy(b.begin(), b.end(), begin());
+}
+
+
 HardHash::HardHash(Bytes &m, HardHashSalt &salt) : Bytes(32) {
   cout << size() << endl;
   crypto_pwhash(ptr<unsigned char*>(), size(),
@@ -149,7 +160,6 @@ HardHash::HardHash(Bytes &m) : Bytes(32) {
 }
 
 HardestHash::HardestHash(Bytes &m, HardHashSalt &salt) : Bytes(32) {
-  cout << size() << endl;
   crypto_pwhash(ptr<unsigned char*>(), size(),
 		m.ptr<char*>(), m.size(),
 		salt.ptr<unsigned char*>(),

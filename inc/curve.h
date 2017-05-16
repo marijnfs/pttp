@@ -92,6 +92,7 @@ struct Hash : public Bytes {
 
 struct HardHashSalt : public Bytes {
   HardHashSalt();
+  HardHashSalt(Bytes &b);
 };
 
 const int HARD_HASH = 32;
@@ -136,6 +137,7 @@ struct KeyPair {
   PublicKey pub;
   
   KeyPair();
+  KeyPair(Bytes seed);
 };
 
 struct SignKeyPair {

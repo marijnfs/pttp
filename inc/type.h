@@ -30,6 +30,8 @@ struct Bytes : public std::vector<uint8_t> {
     Bytes(const T *c, size_t n) : std::vector<uint8_t>(reinterpret_cast<uint8_t const *>(c), reinterpret_cast<uint8_t const *>(c + n)) {};
  Bytes(unsigned char *b, unsigned char *e) : std::vector<uint8_t>(b, e) {}
 
+  void zero() {std::fill(begin(), end(), 0);}
+  
   operator std::string() {
     std::string s(size(), 0);
     memcpy(&s[0], &(*this)[0], size());
@@ -54,6 +56,8 @@ struct Bytes : public std::vector<uint8_t> {
    for (size_t i(0); i < size(); ++i)
      (*this)[i] ^= b[i];
  }
+
+ void from_hex(std::string hex);
  
   operator kj::ArrayPtr<kj::byte>() {
   //void bla() {
