@@ -13,6 +13,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   
+  //Bytes msg_b(argv[1]);
   Bytes msg_b(argv[1]);
   Bytes pass_b(argv[2]);
 
