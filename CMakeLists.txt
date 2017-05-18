@@ -55,6 +55,12 @@ target_link_libraries(hexenc ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb -lpthre
 add_executable(hexdec ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS_2} ${CAPNP_HDRS_2} bin/hexdec.cc)
 target_link_libraries(hexdec ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb -lpthread)
 
+add_executable(fullenc ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS_2} ${CAPNP_HDRS_2} bin/fullenc.cc)
+target_link_libraries(fullenc ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb -lpthread)
+
+add_executable(fulldec ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS_2} ${CAPNP_HDRS_2} bin/fulldec.cc)
+target_link_libraries(fulldec ${CAPNP_LIBRARIES} -lzmq -lsodium -lrocksdb -lpthread)
+
 #add_executable(nodetest ${CPP_HEADERS} ${CPP_SOURCE} ${CAPNP_SRCS} ${CAPNP_HDRS} bin/nodetest.cc)
 #target_link_libraries(nodetest ${CAPNP_LIBRARIES} -lzmq -lsodium)
 
