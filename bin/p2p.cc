@@ -268,7 +268,7 @@ namespace pttp {
     Bytes calculate_hash() {
       Bytes b = bytes();
       return HardHash(b);
-    }		      
+    }
   };
   
   struct BlockChain {
@@ -365,10 +365,13 @@ namespace pttp {
       for (auto b : blocks) heights[b.first] = 0;
       
       for (auto b : blocks) {
+	  if (heights[b.first] == -1)
+	    break;
 	vector<Bytes> list;
 	list.push_back(b.first);
 	auto cur = b.second;
 	while (true) {
+
 	  if (cur->prev_hash == zero_block) {
 	    int h = 0;
 	    for (auto it = list.rbegin(); it != list.rend(); ++it) { //set heights

@@ -1,4 +1,5 @@
 #include "curve.h"
+#include "convert.h"
 
 #include <iostream>
 
@@ -35,6 +36,7 @@ int main(int argc, char **argv) {
   //cout << "msg: " << msg_b << endl;
   //cout << "salt: " << salt_b << endl;
   cout << sealed.sealed_message << " " << salt_b << endl;
+  cout << bytes_to_bech32("m", sealed.sealed_message) << " " << bytes_to_bech32("s", salt_b) << endl;
 
   
   

@@ -82,25 +82,47 @@ Bloom(Bytes data, uint64_t p, ShortHashKey key_) : P(p), hits(p), key(key_), n_o
   
 };
 
-/*
+
 struct Cuckoo {
-  ShortHash h1, h2;
+  //ShortHashKey h1, h2;
   Bloom filter1, filter2;
-  vector<Bytes> hashes;
+  vector<Bytes*> hashes, data;
   size_t N;
   
-Cuckoo(size_t N_) : hashes(N_), N(N_) {
+Cuckoo(size_t N_) : filter1(N_), filter2(N_), hashes(N_), N(N_) {
     
   }
 
-  void store(Bytes hash, Bytes data) {
+  void store(Bytes hash, Bytes new_data) {
+    int p = filter1.hash(hash);
+    if (hashes[p]) {
+      p = filter2.hash(hash);
+      if (hashes[p]) {
+	delete hashes[p];
+	delete data[p];
+      }
+    }
     
+    hashes[p] = new Bytes(hash);
+    data[p] = new Bytes(new_data);
   }
 
-  void get() {
+  Bytes *get(Bytes hash) {
+    int p = filter1.hash(hash);
+    if (!hashes[p]) {
+      p = filter2.hash(hash);
+      if (!hashes[p])
+	return 0;
+      if (*hashes[p] != hash)
+	return 0;
+      return data[p];
+    }
+    if (*hashes[p] != hash)
+      return 0;
+    return data[p];
   }
   
   
-  };*/
+};
 
 #endif
