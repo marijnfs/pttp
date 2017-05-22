@@ -5,6 +5,8 @@
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
 
+#include "bloom_filter.h"
+
 #include <string>
 #include <cassert>
 
@@ -43,6 +45,35 @@ struct DB {
   rocksdb::ReadOptions ro;
 
   std::string path;
+};
+
+struct CachedDB {
+  CachedDB(std::string path, int P) : db(path), cache(P) {
+
+  }
+
+  bool put(Bytes &id, Bytes &data) {
+    cache.store(id, data);
+    db.put(id, data);
+  }
+
+  bool del(Bytes &id) {
+    db.del(id);
+  }
+  
+  bool get(Bytes &id, Bytes *data) {
+    data = cache.get(id);
+    if (!data) {
+      if (!db.get(id, data)) {
+	return false;
+      }
+      cache.store(id, *data);
+    }
+    return true;
+  }
+
+  DB db;
+  Cuckoo cache;
 };
 
 #endif
