@@ -1,24 +1,34 @@
 #include "curve.h"
 
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
 string msg_str("");
 
+
 int main(int argc, char **argv) {
-  if (argc != 3) {
-    cerr << "usage: " << endl;
+  if (argc != 4) {
+    cerr << "usage: msg salt pass" << endl;
     return 1;
   }
-  
-  //Bytes msg_b(argv[1]);
-  Bytes msg_b;
-  msg_b.from_hex(argv[1]);
-  Bytes pass_b(argv[2]);
 
-  Bytes salt_b(8);
-  Curve::inst().random_bytes(salt_b);
+  ifstream words_file("../words/english.txt");
+  vector<string> words;
+  while (words_file) {
+    string w;
+    words_file >> w;
+    if (w.size())
+      words.push_back(w);
+  }
+
+  string msg_hex(argv[1]);
+  string salt_hex(argv[2]);
+  Bytes pass_b(argv[3]);
+  
+  Bytes salt_b;
+  salt_b.from_hex(salt_hex);
 
   //HardHashSalt salt;
   Hash salt_h(salt_b, 16);
@@ -27,13 +37,26 @@ int main(int argc, char **argv) {
   
   HardestHash h(pass_b, salt);
   
+  Bytes msg_b;
+  msg_b.from_hex(msg_hex);
+  
   Hash hh(h, msg_b.size());
   msg_b.x_or(hh);
 
   //cout << "msg: " << msg_b << endl;
-  //cout << "salt: " << salt_b << endl;
-  cout << msg_b << " " << salt_b << endl;
-
+  cout << msg_b << endl;
+  auto bitset = msg_b.bitset<11*24>();
+  cout << bitset << endl;
+  int idx(0);
+  for (int i(0); i < 24; ++i) {
+    int m(0);
+    for (int n(0); n < 11; ++n) {
+      m |= (bitset[idx++] << n);
+    }
+      
+    cout << words[m] << endl;
+  }
+  
   
   
   /*KeyPair pair(h);

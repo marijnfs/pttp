@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <cassert>
+#include <bitset>
+#include <iostream>
 
 #include <kj/common.h>
 #include <kj/string.h>
@@ -20,7 +22,27 @@ struct Bytes : public std::vector<uint8_t> {
  Bytes(std::string &s) : std::vector<uint8_t>(s.size()) { memcpy(&(*this)[0], &s[0], s.size()); }
  Bytes(const char *c) : std::vector<uint8_t>() { std::string s(c); resize(s.size()); memcpy(&(*this)[0], &s[0], s.size()); }
   //Bytes(capnp::Data::Reader r): ::Bytes(r.begin(), r.end()) {}
+
  Bytes(capnp::Data::Reader &r): ::Bytes(r.begin(), r.end()) {}
+  
+  template <long unsigned int N>
+ Bytes(std::bitset<N> &bits) : std::vector<uint8_t>((bits.size()+1)/8) {
+    int idx(0);
+    int n(0);
+    uint8_t u(0);
+    
+    for (int i(0); i < bits.size(); ++i) {
+      u = (u << 1) | bits[i];
+      ++n;
+      if (n == 8) {
+	(*this)[idx++] = u;
+	u = 0;
+	n = 0;
+      }
+    }
+    if (idx < size()) (*this)[idx] = u;
+  }
+  
   Bytes &operator=(capnp::Data::Reader const &r) {*this = Bytes(r.begin(), r.end()); return *this;}
   
   template <typename T>
@@ -31,6 +53,33 @@ struct Bytes : public std::vector<uint8_t> {
  Bytes(unsigned char *b, unsigned char *e) : std::vector<uint8_t>(b, e) {}
 
   void zero() {std::fill(begin(), end(), 0);}
+
+
+  template <long unsigned int N>
+    std::bitset<N> bitset() {
+    std::bitset<N> bits;
+    int idx(0);
+    int n(0);
+    uint8_t u(0);
+    
+    for (int i(0); i < bits.size(); ++i) {
+      int base = 8;
+      if ((i / 8) == (bits.size() / 8))
+	base = bits.size() % 8;
+      uint8_t mask(1 << (base - 1 - n));
+      std::cout << int((*this)[idx]) << " " << int(mask) << " " << (int((*this)[idx]) & int(mask)) << std::endl;
+      bits[i] = (*this)[idx] & mask;
+      ++n;
+      if (n == 8) {
+	idx++;
+	n = 0;
+      }
+    }
+    return bits;
+  }
+
+
+
   
   operator std::string() {
     std::string s(size(), 0);

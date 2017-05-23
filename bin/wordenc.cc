@@ -1,21 +1,59 @@
 #include "curve.h"
 
 #include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <bitset>
 
 using namespace std;
 
 string msg_str("");
 
 int main(int argc, char **argv) {
-  if (argc != 3) {
+  if (argc < 3) {
     cerr << "usage: " << endl;
     return 1;
   }
-  
+
+  ifstream words_file("../words/english.txt");
+  vector<string> words;
+  while (words_file) {
+    string w;
+    words_file >> w;
+    if (w.size())
+      words.push_back(w);
+  }
+
+  vector<string> enc_words;
+  for (int i(2); i < argc; ++i)
+    enc_words.push_back(argv[i]);
+
+    
   //Bytes msg_b(argv[1]);
-  Bytes msg_b;
-  msg_b.from_hex(argv[1]);
-  Bytes pass_b(argv[2]);
+
+
+  bitset<11*24> bits;
+
+  int idx(0);
+  for (auto w : enc_words) {
+    
+    uint n = find(words.begin(), words.end(), w) - words.begin();
+    if (n == words.size()) return -1;
+    cout << n << endl;
+    
+    
+    for (int i(0); i < 11; ++i) {
+      bits[idx++] = (n % 2);
+      n >>= 1;
+    }
+  }
+
+  Bytes msg_b(bits);
+  cout << bits.size() << endl;
+  cout << bits << endl;
+  cout << msg_b.size() << endl;
+  cout << msg_b << endl;
+  Bytes pass_b(argv[1]);
 
   Bytes salt_b(8);
   Curve::inst().random_bytes(salt_b);
