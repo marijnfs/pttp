@@ -19,3 +19,7 @@ sudo make install
 ```
 
 the `ccmake` step will complain when dependencies are missing, resolve them by installen the appropriate libraries.
+
+License
+=======
+MPL V2.0

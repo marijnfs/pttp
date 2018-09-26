@@ -8,7 +8,8 @@ string msg_str("");
 
 int main(int argc, char **argv) {
   if (argc != 3) {
-    cerr << "usage: " << endl;
+    cerr << "usage: " << argv[0] << " [hexmessage] [password]" << endl;
+    cerr << "creates a 8 byte salt" << endl;
     return 1;
   }
   

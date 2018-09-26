@@ -109,8 +109,8 @@ void mine() {
   int n(0);
 
   while (true) {
-    WriteMessage msg;
-    auto builder = msg.builder<Block>();
+    WriteMessage<Block> msg;
+    auto builder = msg.builder();
 
     //todo: get right hashes
     //builder.setPrevHash(hash.kjp());
@@ -202,8 +202,8 @@ namespace pttp {
     }
     
     Bytes credit_bytes() {
-      WriteMessage credit_message;
-      auto credit_set_builder = credit_message.builder<CreditSet>();
+      WriteMessage<CreditSet> credit_message;
+      auto credit_set_builder = credit_message.builder();
       auto credit_set = credit_set_builder.initCredits(credits.size());
       
       for (int i(0); i < credits.size(); ++i) {
@@ -217,8 +217,8 @@ namespace pttp {
     }
 
     Bytes bytes() {
-      WriteMessage msg;
-      auto tx_b = msg.builder<::Transaction>();
+      WriteMessage<::Transaction> msg;
+      auto tx_b = msg.builder();
       auto sig_b = tx_b.initSignatures(witnesses.size());
       auto cred_data = credit_bytes();
       for (int n(0); n < witnesses.size(); ++n) {
@@ -253,8 +253,8 @@ namespace pttp {
     }
     
     Bytes bytes() {
-      WriteMessage msg;
-      auto builder = msg.builder<Block>();
+      WriteMessage<Block> msg;
+      auto builder = msg.builder();
       
       builder.setPrevHash(prev_hash.kjp());
       builder.setTransactionHash(tx_hash.kjp());
@@ -457,8 +457,8 @@ void read_lines() {
     if (line.find("go") != string::npos)
       manager_gtd.add(Task(SYNC_HASHSET));
       
-    WriteMessage msg;
-    auto msg_b = msg.builder<Message>();
+    WriteMessage<Message> msg;
+    auto msg_b = msg.builder();
     msg_b.getContent().setText(line);
     for (auto con : connections) {
       auto b = msg.bytes();
@@ -477,8 +477,8 @@ void manage_connection(Connection *con) {
     switch (task.type)
       {
       case HELLO: {
-	WriteMessage msg;
-	auto b = msg.builder<Message>();
+	WriteMessage<Message> msg;
+	auto b = msg.builder();
 	auto h = b.getContent().initHello();
 	h.setIp(my_ip);
 	auto data = msg.bytes();
@@ -494,8 +494,8 @@ void manage_connection(Connection *con) {
       }
       case REQ_IPS:
 	{
-	  WriteMessage msg;
-	  auto b = msg.builder<Message>();
+	  WriteMessage<Message> msg;
+	  auto b = msg.builder();
 	  b.getContent().initGetPeers();
 	  auto data = msg.bytes();
 	  con->sock.send(data);
@@ -523,8 +523,8 @@ void manage_connection(Connection *con) {
 	  Bytes req_hash = task.data;
 
 	  //Send filter request
-	  WriteMessage msg;
-	  auto b = msg.builder<Message>();
+	  WriteMessage<Message> msg;
+	  auto b = msg.builder();
 	  auto reqhashset_builder = b.getContent().initReqSetFilter();
 	  reqhashset_builder.getReq().setTxSetHash(req_hash.kjp());
 
@@ -557,8 +557,8 @@ void manage_connection(Connection *con) {
 	  cout << "req hash filter: " << endl;
 	  Bytes req_hash = task.data;
 	  
-	  WriteMessage msg;
-	  auto b = msg.builder<Message>();
+	  WriteMessage<Message> msg;
+	  auto b = msg.builder();
 	  auto reqhashset_builder = b.getContent().initReqSet();
 	  
 	  reqhashset_builder.getReq().setTxSetHash(req_hash.kjp());
@@ -701,8 +701,8 @@ void serve(string con_str) {
  
     auto content = reader.getContent();
 
-    WriteMessage response_msg;
-    auto resp_builder = response_msg.builder<Message>();
+    WriteMessage<Message> response_msg;
+    auto resp_builder = response_msg.builder();
     auto content_builder = resp_builder.getContent(); //build message from here
       
     //cout << content << endl;
@@ -864,13 +864,14 @@ int main(int argc, char **argv) {
     ip_list.insert(argv[n]);
 
   thread manage_thread(manage);
-  thread mine_thread(mine);
-  thread readline_thread(read_lines);
   thread serve_thread(serve, con_str);
-
-  serve_thread.join();
-  manage_thread.join();
-  readline_thread.join();
+  thread readline_thread(read_lines);
+  //thread mine_thread(mine);
   
+  
+  manage_thread.join();
+  serve_thread.join();
+  readline_thread.join();
+  //mine_thread.join();
   return 0;
 }

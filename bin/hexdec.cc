@@ -9,7 +9,7 @@ string msg_str("");
 
 int main(int argc, char **argv) {
   if (argc != 4) {
-    cerr << "usage: " << endl;
+    cerr << "usage: " << argv[0] << " [hexmessage] [salt] [password]" << endl;
     return 1;
   }
 

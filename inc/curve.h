@@ -145,6 +145,7 @@ struct SignKeyPair {
   PublicSignKey pub;
   
   SignKeyPair();
+  SignKeyPair(Bytes seed);
 };
 
 

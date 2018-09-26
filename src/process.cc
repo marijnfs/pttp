@@ -12,8 +12,8 @@ bool create_transaction(::Transaction::Builder &transaction_builder, vector<Sign
   if (amounts.size() != n) return false;
 
     //setup credits
-  WriteMessage credit_message;
-  auto credit_set_builder = credit_message.builder<CreditSet>();
+  WriteMessage<CreditSet> credit_message;
+  auto credit_set_builder = credit_message.builder();
   auto credits = credit_set_builder.initCredits(n);
 
   int n_negative(0);
@@ -46,8 +46,8 @@ bool create_transaction(::Transaction::Builder &transaction_builder, vector<Sign
 }
 
 Bytes create_transaction(vector<SignKeyPair> &accounts, vector<int> &amounts) {
-  WriteMessage transaction_message;
-  auto transaction_builder = transaction_message.builder<Transaction>();
+  WriteMessage<::Transaction> transaction_message;
+  auto transaction_builder = transaction_message.builder();
   
   if (!create_transaction(transaction_builder, accounts, amounts))
     throw "fail";

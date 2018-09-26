@@ -18,6 +18,8 @@
 #include "messages.capnp.h"
 #include "process.h"
 
+#include "estimate_outside_ip.h"
+
 using namespace std;
 
 
@@ -26,6 +28,8 @@ int main(int argc, char **argv) {
   assert(argc > 1);
   string constr(argv[1]);
 
+  cout << "my ip: " << estimate_outside_ip() << endl;
+  
   // *** create transaction
   vector<SignKeyPair> accounts(3);
   vector<int> amounts(3);
@@ -48,7 +52,7 @@ int main(int argc, char **argv) {
   cout << "priv: " << bytes_to_bech32("pv", test_pair.priv) << endl;
   Bytes pwd("apasswd");
   HardestHash pwd_hash(pwd);
-  cout << "pwd: " << pwd_hash << endl;
+  cout << "pwd: " << bytes_to_bech32("hs", pwd_hash) << endl;
   SecretKey enc_key;
   copy(pwd_hash.begin(), pwd_hash.end(), enc_key.begin());
   
@@ -67,10 +71,10 @@ int main(int argc, char **argv) {
   //xauto hello_builder = hello_message.builder<Hello>();
 
   {
-    WriteMessage message;
+    WriteMessage<Message> message;
     //auto builder = message.builder<Message>();
     
-    auto builder = message.builder<Message>();
+    auto builder = message.builder();
     auto hello_builder = builder.getContent().initHello();
     hello_builder.setIp("sdfasdf");
     hello_builder.setPort(120);
@@ -81,8 +85,8 @@ int main(int argc, char **argv) {
   }
 
   {
-    WriteMessage message;
-    auto builder = message.builder<Message>();
+    WriteMessage<Message> message;
+    auto builder = message.builder();
     auto tx = builder.getContent().initTransaction();
     create_transaction(tx, accounts, amounts);
     Bytes b = message.bytes();
@@ -91,8 +95,8 @@ int main(int argc, char **argv) {
   }
 
   {
-    WriteMessage message;
-    auto builder = message.builder<Message>();
+    WriteMessage<Message> message;
+    auto builder = message.builder();
     builder.getContent().initGetPeers();
     Bytes b = message.bytes();
     sock.send(b);

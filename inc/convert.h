@@ -64,10 +64,10 @@ ReadMessage(Bytes &bytes) : cap_message(bytes.size()) {
   }
   }*/
 
+template <typename T>
 struct WriteMessage {
     ::capnp::MallocMessageBuilder cap_message;
 
-  template <typename T>
   auto builder() {
     return cap_message.initRoot<T>();
   }

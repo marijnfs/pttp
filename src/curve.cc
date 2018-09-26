@@ -114,6 +114,10 @@ SignKeyPair::SignKeyPair() {
   crypto_sign_keypair(&pub[0], &priv[0]);
 }
 
+SignKeyPair::SignKeyPair(Bytes seed) {
+  crypto_sign_seed_keypair(&pub[0], &priv[0], &seed[0]);
+}
+
 Hash::Hash(Bytes &m, int nbytes) : ::Bytes(nbytes) {
   crypto_generichash(ptr<unsigned char*>(), size(),
 		     &m[0], m.size(), NULL, 0);
